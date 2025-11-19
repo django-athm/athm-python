@@ -1,0 +1,232 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "athm"
+version = "0.1.0"
+description = "A modern Python library for the ATH Móvil payment API"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Raúl Negrón-Otero", email = "raul.esteban.negron@gmail.com" },
+]
+maintainers = [
+    { name = "Raúl Negrón-Otero", email = "raul.esteban.negron@gmail.com" },
+]
+keywords = ["athmovil", "payment", "ath", "puerto-rico", "payments", "api", "ecommerce"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.24.0,<1.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "typing-extensions>=4.0.0,<5.0.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-httpx>=0.35.0",
+
+    # Code quality
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+
+    # Development tools
+    "pre-commit>=4.0.0",
+    "commitizen>=3.30.0",
+    "git-cliff>=2.6.0",
+
+    # Documentation
+    "mkdocs>=1.6.0",
+    "mkdocstrings[python]>=0.27.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/django-athm/athm-python"
+Documentation = "https://athm-python.readthedocs.io"
+Repository = "https://github.com/django-athm/athm-python"
+Issues = "https://github.com/django-athm/athm-python/issues"
+Changelog = "https://github.com/django-athm/athm-python/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "athm/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/athm",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["athm"]
+
+# Testing configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=athm",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-branch",
+    "--cov-fail-under=95",
+    "-m", "not integration",
+]
+pythonpath = ["."]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["athm"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/logging.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+    "except ImportError:",
+    "# nocov",
+]
+precision = 2
+show_missing = true
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "D",    # pydocstyle
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # Ruff-specific rules
+    "PTH",  # flake8-use-pathlib
+    "N",    # pep8-naming
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D107", # Missing docstring in __init__
+    "D203", # 1 blank line required before class docstring
+    "D213", # Multi-line docstring summary should start at the second line
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "S101", "PLR0913"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["athm"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = false
+no_implicit_optional = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+show_error_codes = true
+namespace_packages = true
+pretty = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+# Commitizen configuration
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = [
+    "athm/__init__.py:__version__",
+    "pyproject.toml:version",
+]
+tag_format = "v$version"
+update_changelog_on_bump = true
+changelog_file = "CHANGELOG.md"
+
+# git-cliff configuration
+[tool.git-cliff]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+"""
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+footer = ""
+trim = true

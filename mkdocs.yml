@@ -1,0 +1,84 @@
+site_name: ATH Móvil Python Library
+site_description: A modern Python library for the ATH Móvil payment platform
+site_author: Raúl Negrón-Otero
+site_url: https://athm-python.readthedocs.io
+
+repo_name: django-athm/athm-python
+repo_url: https://github.com/django-athm/athm-python
+edit_uri: edit/main/docs/
+
+theme:
+  name: readthedocs
+  locale: en
+  highlightjs: true
+  hljs_languages:
+    - python
+    - yaml
+    - json
+  navigation_depth: 4
+  collapse_navigation: false
+  titles_only: false
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_signature_annotations: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            line_length: 100
+            docstring_section_style: spacy
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Payment Flow Guide: guide.md
+  - Reference:
+    - API Reference: api-reference.md
+    - Error Handling: errors.md
+    - Official ATH Móvil API: reference.md
+  - Advanced:
+    - Advanced Usage: advanced.md
+
+copyright: Copyright &copy; 2025 - Raúl Negrón-Otero
