@@ -11,6 +11,12 @@ _Initial release - see Unreleased section above for features_
 [Unreleased]: https://github.com/django-athm/athm-python/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/django-athm/athm-python/releases/tag/v0.1.0
 
+## v0.2.0 (2025-11-19)
+
+### Fix
+
+- **client**: improve validation error message formatting
+
 ## v0.2.0b0 (2025-11-19)
 
 ### Feat
