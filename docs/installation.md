@@ -146,10 +146,10 @@ try:
         tax="0.00",
         metadata1="Installation Test"
     )
-    print(f"Success! Payment ID: {payment.ecommerce_id}")
+    print(f"Success! Payment ID: {payment.data.ecommerce_id}")
 
     # Cancel the test payment
-    client.cancel_payment(payment.ecommerce_id)
+    client.cancel_payment(payment.data.ecommerce_id)
     print("Test payment cancelled")
 
 except Exception as e:

@@ -1,7 +1,8 @@
 # ATH Móvil Unofficial Python Library
 
-[![PyPI version](https://badge.fury.io/py/athm.svg)](https://badge.fury.io/py/athm)
+![PyPI - Version](https://img.shields.io/pypi/v/athm)
 [![Python Versions](https://img.shields.io/pypi/pyversions/athm.svg)](https://pypi.org/project/athm/)
+[![Read the Docs](https://img.shields.io/readthedocs/athm-python)](https://athm-python.readthedocs.io/en/latest/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/django-athm/athm-python/actions/workflows/test.yml/badge.svg)](https://github.com/django-athm/athm-python/actions/workflows/test.yml)
 
@@ -54,10 +55,10 @@ payment = client.create_payment(
     ],
 )
 
-confirmed = client.wait_for_confirmation(payment.ecommerce_id)
+confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
 
 if confirmed:
-    result = client.authorize_payment(payment.ecommerce_id)
+    result = client.authorize_payment(payment.data.ecommerce_id)
     print(f"Payment completed: {result.data.reference_number}")
 ```
 
@@ -118,7 +119,7 @@ with ATHMovilClient(public_token="token") as client:
 ## Development
 
 ```bash
-git clone https://github.com/yourusername/athm-python.git
+git clone https://github.com/django-athm/athm-python.git
 cd athm-python
 uv sync --all-extras --dev
 uv run pytest
@@ -127,8 +128,8 @@ uv run pytest
 ### Code Quality
 
 ```bash
-uv run ruff format athm tests
-uv run ruff check athm tests --fix
+uv run ruff format
+uv run ruff check
 uv run mypy athm
 ```
 

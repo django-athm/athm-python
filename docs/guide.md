@@ -51,7 +51,7 @@ payment = client.create_payment(
     }]
 )
 
-print(f"Payment created: {payment.ecommerce_id}")
+print(f"Payment created: {payment.data.ecommerce_id}")
 print("Customer will receive a push notification")
 ```
 
@@ -68,14 +68,14 @@ The customer needs to open their ATH Móvil app and approve the payment:
 # Option 1: Automatic polling (recommended)
 try:
     confirmed = client.wait_for_confirmation(
-        payment.ecommerce_id,
+        payment.data.ecommerce_id,
         polling_interval=2.0,  # Check every 2 seconds
         max_attempts=150       # 5 minutes max (150 * 2s)
     )
     print("Customer confirmed!")
 except TimeoutError:
     print("Customer didn't confirm in time")
-    client.cancel_payment(payment.ecommerce_id)
+    client.cancel_payment(payment.data.ecommerce_id)
 ```
 
 ```python
@@ -86,7 +86,7 @@ max_wait = 300  # 5 minutes
 elapsed = 0
 
 while elapsed < max_wait:
-    status = client.find_payment(payment.ecommerce_id)
+    status = client.find_payment(payment.data.ecommerce_id)
 
     if status.data.status == "CONFIRM":
         print("Customer confirmed!")
@@ -118,7 +118,7 @@ Once confirmed, you must authorize to finalize:
 
 ```python
 # Authorize completes the payment
-result = client.authorize_payment(payment.ecommerce_id)
+result = client.authorize_payment(payment.data.ecommerce_id)
 
 print(f"Payment completed!")
 print(f"Reference number: {result.data.reference_number}")
@@ -166,17 +166,17 @@ try:
     # Wait for confirmation
     try:
         confirmed = client.wait_for_confirmation(
-            payment.ecommerce_id,
+            payment.data.ecommerce_id,
             max_attempts=150
         )
     except TimeoutError:
         # Customer didn't confirm, clean up
-        client.cancel_payment(payment.ecommerce_id)
+        client.cancel_payment(payment.data.ecommerce_id)
         print("Payment cancelled due to timeout")
         return
 
     # Authorize
-    result = client.authorize_payment(payment.ecommerce_id)
+    result = client.authorize_payment(payment.data.ecommerce_id)
     print(f"Success! Reference: {result.data.reference_number}")
 
 except ValidationError as e:
@@ -221,23 +221,23 @@ def process_payment(amount: str, phone: str, order_id: str) -> str | None:
             ],
         )
 
-        print(f"Payment created: {payment.ecommerce_id}")
+        print(f"Payment created: {payment.data.ecommerce_id}")
         print(f"Waiting for customer {phone} to confirm...")
 
         # 2. Wait for customer confirmation (5 minute timeout)
         try:
             client.wait_for_confirmation(
-                payment.ecommerce_id,
+                payment.data.ecommerce_id,
                 polling_interval=2.0,
                 max_attempts=150  # 5 minutes
             )
         except TimeoutError:
             print("Customer didn't confirm in time, cancelling...")
-            client.cancel_payment(payment.ecommerce_id)
+            client.cancel_payment(payment.data.ecommerce_id)
             return None
 
         # 3. Authorize payment
-        result = client.authorize_payment(payment.ecommerce_id)
+        result = client.authorize_payment(payment.data.ecommerce_id)
 
         print(f"Payment completed!")
         print(f"  Reference: {result.data.reference_number}")
@@ -321,12 +321,12 @@ If the customer provides a different phone number:
 ```python
 # After payment creation, before confirmation
 client.update_phone_number(
-    ecommerce_id=payment.ecommerce_id,
+    ecommerce_id=payment.data.ecommerce_id,
     phone_number="7875559999"
 )
 
 # Now wait for confirmation on the new number
-client.wait_for_confirmation(payment.ecommerce_id)
+client.wait_for_confirmation(payment.data.ecommerce_id)
 ```
 
 ## Common Patterns
@@ -339,15 +339,15 @@ If you don't want to poll, implement a customer redirect:
 # 1. Create payment
 payment = client.create_payment(...)
 
-# 2. Show customer a page with payment.ecommerce_id
+# 2. Show customer a page with payment.data.ecommerce_id
 #    Customer opens ATH Móvil app and confirms
 
 # 3. Customer returns to your site, you check status
-status = client.find_payment(payment.ecommerce_id)
+status = client.find_payment(payment.data.ecommerce_id)
 
 if status.data.status == "CONFIRM":
     # Authorize it
-    result = client.authorize_payment(payment.ecommerce_id)
+    result = client.authorize_payment(payment.data.ecommerce_id)
 ```
 
 ### Pattern: Background Job
@@ -357,8 +357,8 @@ For async frameworks:
 ```python
 # In request handler
 payment = client.create_payment(...)
-enqueue_job("check_payment", payment.ecommerce_id)
-return {"payment_id": payment.ecommerce_id}
+enqueue_job("check_payment", payment.data.ecommerce_id)
+return {"payment_id": payment.data.ecommerce_id}
 
 # In background worker
 def check_payment(ecommerce_id):

@@ -111,8 +111,8 @@ with ATHMovilClient(public_token="...") as client:
         tax="0.00"
     )
 
-    confirmed = client.wait_for_confirmation(payment.ecommerce_id)
-    result = client.authorize_payment(payment.ecommerce_id)
+    confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
+    result = client.authorize_payment(payment.data.ecommerce_id)
 
     print(f"Reference: {result.data.reference_number}")
 
@@ -186,7 +186,7 @@ payment = client.create_payment(...)  # Uses 30s timeout
 
 # Longer wait for confirmation
 confirmed = client.wait_for_confirmation(
-    payment.ecommerce_id,
+    payment.data.ecommerce_id,
     polling_interval=2.0,
     max_attempts=300  # 10 minutes (300 * 2s)
 )

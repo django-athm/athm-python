@@ -308,7 +308,7 @@ def create_payment_with_retry(
                 subtotal=amount,
                 tax="0.00"
             )
-            return payment.ecommerce_id
+            return payment.data.ecommerce_id
 
         except ValidationError as e:
             # Invalid data - don't retry, fix input
@@ -461,7 +461,7 @@ try:
         subtotal="50.00",
         tax="0.00"
     )
-    logger.info(f"Payment created: {payment.ecommerce_id}")
+    logger.info(f"Payment created: {payment.data.ecommerce_id}")
 
 except ATHMovilError as e:
     # Log error safely
@@ -487,7 +487,7 @@ try:
     payment = client.create_payment(...)
     logger.info(
         "payment_created",
-        ecommerce_id=payment.ecommerce_id,
+        ecommerce_id=payment.data.ecommerce_id,
         amount="50.00"
     )
 except ATHMovilError as e:

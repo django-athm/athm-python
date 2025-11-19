@@ -278,9 +278,9 @@ Response from creating a payment.
 ```python
 payment = client.create_payment(...)
 
-print(payment.ecommerce_id)  # Payment ID
-print(payment.auth_token)    # Authorization token
-print(payment.expires_in)    # Expiry timestamp
+print(payment.data.ecommerce_id)  # Payment ID
+print(payment.data.auth_token)    # Authorization token
+print(payment.data.expires_in)    # Expiry timestamp
 ```
 
 **Fields:**
@@ -562,13 +562,13 @@ payment = client.create_payment(
 )
 
 # Check status
-status = client.find_payment(payment.ecommerce_id)
+status = client.find_payment(payment.data.ecommerce_id)
 
 # Wait for confirmation
-confirmed = client.wait_for_confirmation(payment.ecommerce_id)
+confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
 
 # Authorize
-result = client.authorize_payment(payment.ecommerce_id)
+result = client.authorize_payment(payment.data.ecommerce_id)
 
 # Refund (requires private_token)
 refund = client.refund_payment(
