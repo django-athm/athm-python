@@ -1,9 +1,9 @@
-# ATH Móvil Unofficial Library
+# ATH Móvil Unofficial Python Library
 
 [![PyPI version](https://badge.fury.io/py/athm.svg)](https://badge.fury.io/py/athm)
 [![Python Versions](https://img.shields.io/pypi/pyversions/athm.svg)](https://pypi.org/project/athm/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://github.com/yourusername/athm-python/actions/workflows/test.yml/badge.svg)](https://github.com/yourusername/athm-python/actions/workflows/test.yml)
+[![Tests](https://github.com/django-athm/athm-python/actions/workflows/test.yml/badge.svg)](https://github.com/django-athm/athm-python/actions/workflows/test.yml)
 
 A modern, type-safe Python library for the ATH Móvil payment platform.
 
@@ -41,7 +41,7 @@ from athm import ATHMovilClient
 client = ATHMovilClient(public_token="your_public_token")
 
 payment = client.create_payment(
-    total="100.00",
+    total="5.00",
     phone_number="7875551234",  # Customer's phone number with ATH Móvil account
     metadata1="Order #123",
     items=[
@@ -49,7 +49,7 @@ payment = client.create_payment(
             "name": "Product Name",
             "description": "Product Description",
             "quantity": "1",
-            "price": "100.00",
+            "price": "5.00",
         }
     ],
 )
@@ -88,9 +88,9 @@ from athm.exceptions import ValidationError, ATHMovilError
 
 try:
     payment = client.create_payment(
-        total="0.50",  # Below minimum - will raise ValidationError
+        total="5.00",
         phone_number="7875551234",  # Customer's phone number with ATH Móvil account
-        items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "0.50"}],
+        items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
     )
 except ValidationError as e:
     print(f"Invalid data: {e}")
@@ -103,9 +103,9 @@ except ATHMovilError as e:
 ```python
 with ATHMovilClient(public_token="token") as client:
     payment = client.create_payment(
-        total="100.00",
+        total="5.00",
         phone_number="7875551234",  # Customer's phone number with ATH Móvil account
-        items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "100.00"}],
+        items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
     )
     # Client is automatically closed when exiting the context
 ```

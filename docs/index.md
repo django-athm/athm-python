@@ -25,10 +25,16 @@ client = ATHMovilClient(public_token="YOUR_PUBLIC_TOKEN")
 
 # Create payment
 payment = client.create_payment(
-    total="50.00",
+    total="5.00",
     phone_number="7875551234",  # Customer's phone number with ATH Móvil account
-    subtotal="45.00",
-    tax="5.00"
+    items=[
+        {
+            "name": "Product Name",
+            "description": "Product Description",
+            "quantity": "1",
+            "price": "5.00",
+        }
+    ],
 )
 
 # Wait for customer to confirm on their phone

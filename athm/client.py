@@ -32,6 +32,32 @@ from athm.models import (
 from athm.types import Headers, JSONDict, Self, Timeout
 
 
+def _format_validation_error(error: PydanticValidationError) -> str:
+    """Format Pydantic validation error concisely.
+
+    Args:
+        error: Pydantic ValidationError
+
+    Returns:
+        Formatted error message showing field and error type
+    """
+    errors = error.errors()
+    if not errors:
+        return "Invalid data"
+
+    # Format each error as "field: error_type"
+    error_msgs = []
+    for err in errors:
+        field = ".".join(str(loc) for loc in err["loc"])
+        error_type = err["type"]
+        error_msgs.append(f"{field}: {error_type}")
+
+    if len(error_msgs) == 1:
+        return f"Validation error - {error_msgs[0]}"
+    else:
+        return f"Validation errors - {'; '.join(error_msgs)}"
+
+
 class ATHMovilClient:
     """Client for interacting with ATH Móvil Payment API.
 
@@ -259,7 +285,7 @@ class ATHMovilClient:
                 **kwargs,
             )
         except PydanticValidationError as e:
-            raise ValidationError(f"Invalid payment data: {e}") from e
+            raise ValidationError(_format_validation_error(e)) from e
 
         response = self._make_request(
             "POST",
@@ -365,7 +391,7 @@ class ATHMovilClient:
                 phone_number=phone_number,
             )
         except PydanticValidationError as e:
-            raise ValidationError(f"Invalid phone number: {e}") from e
+            raise ValidationError(_format_validation_error(e)) from e
 
         headers = self._prepare_headers(auth_token=token)
 
@@ -438,7 +464,7 @@ class ATHMovilClient:
                 message=message,
             )
         except PydanticValidationError as e:
-            raise ValidationError(f"Invalid refund data: {e}") from e
+            raise ValidationError(_format_validation_error(e)) from e
 
         response = self._make_request(
             "POST",

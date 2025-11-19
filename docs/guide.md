@@ -40,18 +40,14 @@ client = ATHMovilClient(public_token=os.getenv("ATHM_PUBLIC_TOKEN"))
 
 # Create payment
 payment = client.create_payment(
-    total="50.00",
+    total="5.00",
     phone_number="7875551234",  # Customer's phone
-    subtotal="45.00",
-    tax="5.00",
     metadata1="Order #12345",  # Optional: your reference
-    metadata2="2 items",        # Optional: extra info
     items=[{
         "name": "Product Name",
         "description": "Product description",
         "quantity": "1",
-        "price": "45.00",
-        "tax": "5.00"
+        "price": "5.00",
     }]
 )
 
@@ -155,10 +151,16 @@ from athm import (
 try:
     # Create payment
     payment = client.create_payment(
-        total="50.00",
+        total="5.00",
         phone_number="7875551234",
-        subtotal="50.00",
-        tax="0.00"
+        items=[
+            {
+                "name": "Product Name",
+                "description": "Product Description",
+                "quantity": "1",
+                "price": "5.00",
+            }
+        ],
     )
 
     # Wait for confirmation
@@ -208,9 +210,15 @@ def process_payment(amount: str, phone: str, order_id: str) -> str | None:
         payment = client.create_payment(
             total=amount,
             phone_number=phone,
-            subtotal=amount,
-            tax="0.00",
-            metadata1=f"Order {order_id}"
+            metadata1=f"Order {order_id}",
+            items=[
+                {
+                    "name": "Order Item",
+                    "description": f"Order {order_id}",
+                    "quantity": "1",
+                    "price": amount,
+                }
+            ],
         )
 
         print(f"Payment created: {payment.ecommerce_id}")
@@ -249,7 +257,7 @@ def process_payment(amount: str, phone: str, order_id: str) -> str | None:
 # Usage
 if __name__ == "__main__":
     ref = process_payment(
-        amount="25.50",
+        amount="5.00",
         phone="7875551234",
         order_id="ORD-12345"
     )
@@ -272,10 +280,16 @@ client = ATHMovilClient(public_token=os.getenv("ATHM_PUBLIC_TOKEN"))
 try:
     # Does create + wait + authorize in one call
     result = client.process_complete_payment(
-        total="50.00",
+        total="5.00",
         phone_number="7875551234",
-        subtotal="50.00",
-        tax="0.00",
+        items=[
+            {
+                "name": "Product Name",
+                "description": "Product Description",
+                "quantity": "1",
+                "price": "5.00",
+            }
+        ],
         polling_interval=2.0,
         max_wait_time=300.0  # 5 minutes
     )

@@ -99,17 +99,14 @@ class TestPaymentOperations:
         )
 
         response = client.create_payment(
-            total="100.00",
+            total="5.00",
             phone_number="7875551234",
-            tax="10.00",
-            subtotal="90.00",
             items=[
                 {
                     "name": "Test",
                     "description": "Test",
                     "quantity": "1",
-                    "price": "90.00",
-                    "tax": "10.00",
+                    "price": "5.00",
                 }
             ],
         )
@@ -143,9 +140,9 @@ class TestPaymentOperations:
 
         with pytest.raises(ValidationError):
             client.create_payment(
-                total="100.00",
+                total="5.00",
                 phone_number="7875551234",
-                items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "100.00"}],
+                items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
             )
 
 
@@ -350,6 +347,15 @@ class TestUpdatePhoneOperations:
         with pytest.raises(ValidationError):
             client.update_phone_number(ecommerce_id, "123")
 
+    def test_update_phone_no_auth_token(
+        self,
+        client: ATHMovilClient,
+        ecommerce_id: str,
+    ):
+        # Don't set auth token - should raise AuthenticationError
+        with pytest.raises(AuthenticationError, match="No auth token available"):
+            client.update_phone_number(ecommerce_id, "7875559999")
+
 
 class TestWaitForConfirmation:
     def test_wait_for_confirmation_success(
@@ -451,10 +457,10 @@ class TestCompletePaymentFlow:
         )
 
         response = client.process_complete_payment(
-            total="100.00",
+            total="5.00",
             phone_number="7875551234",
             polling_interval=0.01,
-            items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "100.00"}],
+            items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
         )
 
         assert response.data
@@ -552,3 +558,61 @@ class TestAdditionalCoverage:
 
         with pytest.raises(NetworkError, match="HTTP error"):
             client.find_payment(ecommerce_id)
+
+
+class TestFriendlyValidationErrors:
+    """Tests for clean validation error messages."""
+
+    def test_missing_items_field_error(self, client: ATHMovilClient):
+        """Test that missing items field shows the error type."""
+        with pytest.raises(ValidationError, match="items: missing"):
+            client.create_payment(
+                total="5.00",
+                phone_number="7875551234",
+                # items field is missing
+            )
+
+    def test_invalid_phone_number_format(self, client: ATHMovilClient):
+        """Test that invalid phone number shows the error type."""
+        with pytest.raises(ValidationError, match="phone_number: string_pattern_mismatch"):
+            client.create_payment(
+                total="5.00",
+                phone_number="123",  # Too short
+                items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
+            )
+
+    def test_update_phone_invalid_format(
+        self, client: ATHMovilClient, ecommerce_id: str, auth_token: str
+    ):
+        """Test that update_phone_number shows error type for invalid phone."""
+        client._auth_tokens[ecommerce_id] = auth_token
+
+        with pytest.raises(ValidationError, match="phone_number: string_pattern_mismatch"):
+            client.update_phone_number(ecommerce_id, "invalid")
+
+    def test_refund_validation_error_shows_type(self, client: ATHMovilClient):
+        """Test that refund validation errors show error type."""
+        with pytest.raises(ValidationError, match="Validation error"):
+            client.refund_payment(
+                reference_number="REF123",
+                amount="invalid_amount",
+            )
+
+    def test_multiple_validation_errors(self, client: ATHMovilClient):
+        """Test that multiple validation errors show all fields."""
+        with pytest.raises(ValidationError, match="Validation errors"):
+            client.create_payment(
+                total="5.00",
+                phone_number="",  # Invalid - empty
+                # items field is missing
+            )
+
+    def test_validation_error_string_too_long(self, client: ATHMovilClient):
+        """Test that string_too_long error type is exposed."""
+        with pytest.raises(ValidationError, match="string_too_long"):
+            client.create_payment(
+                total="5.00",
+                phone_number="7875551234",
+                metadata1="x" * 100,  # Way too long (max is 40)
+                items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
+            )
