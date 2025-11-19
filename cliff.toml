@@ -28,12 +28,12 @@ footer = """
 {% for release in releases -%}
     {% if release.version -%}
         {% if release.previous.version -%}
-            [{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/yourusername/athm-python/compare/{{ release.previous.version }}...{{ release.version }}
+            [{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/django-athm/athm-python/compare/{{ release.previous.version }}...{{ release.version }}
         {% else -%}
-            [{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/yourusername/athm-python/releases/tag/{{ release.version }}
+            [{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/django-athm/athm-python/releases/tag/{{ release.version }}
         {% endif -%}
     {% else -%}
-        [Unreleased]: https://github.com/yourusername/athm-python/compare/{{ release.previous.version }}...HEAD
+        [Unreleased]: https://github.com/django-athm/athm-python/compare/{{ release.previous.version }}...HEAD
     {% endif -%}
 {% endfor %}
 """
@@ -44,7 +44,7 @@ conventional_commits = true
 filter_unconventional = false
 split_commits = false
 commit_preprocessors = [
-    { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](https://github.com/yourusername/athm-python/issues/${2}))" },
+    { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](https://github.com/django-athm/athm-python/issues/${2}))" },
 ]
 commit_parsers = [
     { message = "^feat", group = "Features" },

@@ -25,8 +25,8 @@ from athm.models import (
 )
 
 __version__ = "0.2.0b0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+__author__ = "Raúl Negrón-Otero"
+__email__ = "raul.esteban.negron@gmail.com"
 
 __all__ = [
     "ATHMovilClient",
