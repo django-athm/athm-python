@@ -1,12 +1,12 @@
 # API Reference
 
-Complete reference for the key classes and methods in the ATH Móvil Python library.
+Complete reference for the key classes and methods in the ATH Móvil unofficial library.
 
 ## Client
 
 ### ATHMovilClient
 
-::: athm.client.ATHMovilClient
+::athm.client.ATHMovilClient
     options:
       show_source: false
       heading_level: 4

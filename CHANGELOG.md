@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of the ATH Móvil Python library
+- Initial release of the ATH Móvil unofficial library
 - Complete implementation of ATH Móvil Payment Button API v2
 - Support for all payment operations:
   - Create payment tickets

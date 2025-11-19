@@ -1,4 +1,4 @@
-# ATH Móvil Python Library
+# ATH Móvil Unofficial Library
 
 A modern, type-safe Python library for integrating ATH Móvil payments into your application.
 
@@ -45,7 +45,7 @@ print(f"Payment completed! Reference: {result.data.reference_number}")
 - **Simple API**: Pythonic interface, sensible defaults
 - **Automatic retries**: Built-in exponential backoff
 - **Comprehensive errors**: Specific exceptions for each error type
-- **Well-tested**: 95%+ code coverage
+- **Well-tested**: Comprehensive test suite with high coverage
 
 ## Next Steps
 

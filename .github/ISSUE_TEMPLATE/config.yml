@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/django-athm/athm-python/discussions
+    about: Ask questions or discuss ideas with the community
+  - name: Documentation
+    url: https://athm-python.readthedocs.io
+    about: Check the documentation for usage guides and API reference
+  - name: Official ATH Móvil API
+    url: https://github.com/evertec/ATHM-Payment-Button-API
+    about: Official ATH Móvil API documentation

@@ -1,29 +1,23 @@
 # Error Handling
 
-Complete guide to handling errors in the ATH Móvil Python library.
+Complete guide to handling errors in the ATH Móvil unofficial library.
 
 ## Exception Hierarchy
 
 All exceptions inherit from `ATHMovilError`:
 
-```mermaid
-graph TD
-    A[ATHMovilError] --> B[AuthenticationError]
-    A --> C[ValidationError]
-    A --> D[InvalidRequestError]
-    A --> E[TransactionError]
-    A --> F[TimeoutError]
-    A --> G[RateLimitError]
-    A --> H[NetworkError]
-    A --> I[InternalServerError]
-
-    E --> J[PaymentError]
-    E --> K[RefundError]
-
-    style A fill:#ff6b6b
-    style E fill:#ffd93d
-    style J fill:#95e1d3
-    style K fill:#95e1d3
+```
+ATHMovilError (base exception)
+├── AuthenticationError          # Invalid tokens, auth failures
+├── ValidationError              # Invalid amounts, phone, metadata
+├── InvalidRequestError          # Malformed requests
+├── TransactionError             # Transaction state errors
+│   ├── PaymentError             # Payment-specific errors
+│   └── RefundError              # Refund-specific errors
+├── TimeoutError                 # Network or polling timeout
+├── RateLimitError               # Too many requests
+├── NetworkError                 # Connection issues
+└── InternalServerError          # ATH Móvil server errors
 ```
 
 ## Basic Error Handling

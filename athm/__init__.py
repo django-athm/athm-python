@@ -1,4 +1,4 @@
-"""ATH Móvil Python Library.
+"""ATH Móvil Unofficial Library.
 
 A modern Python library for integrating with the ATH Móvil payment API.
 """

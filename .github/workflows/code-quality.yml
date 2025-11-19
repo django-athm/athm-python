@@ -1,14 +1,14 @@
-name: Type Check
+name: Code Quality
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  type-check:
+  quality:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,13 +25,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          uv sync --all-extras --dev
-          uv pip install -e .
+        run: uv sync --all-extras --dev
+
+      - name: Run Ruff linter
+        run: uv run ruff check athm tests
+
+      - name: Run Ruff formatter
+        run: uv run ruff format --check athm tests
 
       - name: Run mypy type checker
-        run: |
-          uv run mypy athm
+        run: uv run mypy athm
 
       - name: Verify py.typed marker
         run: |

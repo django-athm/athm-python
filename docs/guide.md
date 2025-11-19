@@ -4,17 +4,7 @@ This guide walks through a complete ATH Móvil payment from creation to completi
 
 ## Payment Lifecycle
 
-ATH Móvil payments follow a state-based lifecycle:
-
-```mermaid
-stateDiagram-v2
-    [*] --> OPEN: create_payment()
-    OPEN --> CONFIRM: Customer approves on phone
-    OPEN --> CANCEL: cancel_payment() or timeout
-    CONFIRM --> COMPLETED: authorize_payment()
-    COMPLETED --> [*]
-    CANCEL --> [*]
-```
+ATH Móvil payments follow a state-based lifecycle with the following states:
 
 ### Payment States
 
@@ -25,36 +15,16 @@ stateDiagram-v2
 | **COMPLETED** | Payment authorized and finalized | Can refund if needed |
 | **CANCEL** | Payment cancelled or timed out | Cannot recover, create new payment |
 
-## Complete Flow Sequence
+## Payment Flow
 
-Here's how the entire payment process works:
+The payment process follows these steps:
 
-```mermaid
-sequenceDiagram
-    participant You as Your App
-    participant API as ATH Móvil API
-    participant Customer as Customer Phone
-
-    You->>API: 1. create_payment()
-    API-->>You: ecommerce_id, auth_token
-
-    API->>Customer: 2. Push notification
-    Note over Customer: Customer opens<br/>ATH Móvil app
-
-    You->>API: 3. wait_for_confirmation()<br/>(polls every 2s)
-    API-->>You: status: OPEN
-
-    Customer->>API: 4. Approves payment
-    API-->>Customer: Confirmation
-
-    You->>API: 5. find_payment() (polling)
-    API-->>You: status: CONFIRM
-
-    You->>API: 6. authorize_payment()
-    API-->>You: status: COMPLETED<br/>reference_number
-
-    Note over You: Payment complete!
-```
+1. **Create payment** - Your app calls `create_payment()` and receives an `ecommerce_id`
+2. **Push notification** - ATH Móvil sends notification to customer's phone
+3. **Customer approval** - Customer opens ATH Móvil app and approves payment
+4. **Poll for confirmation** - Your app polls for status change to `CONFIRM`
+5. **Authorize payment** - Your app calls `authorize_payment()` to complete the transaction
+6. **Completion** - Payment status changes to `COMPLETED` and you receive a `reference_number`
 
 ## Step-by-Step Implementation
 

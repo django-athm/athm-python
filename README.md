@@ -1,4 +1,4 @@
-# ATH Móvil Python Library
+# ATH Móvil Unofficial Library
 
 [![PyPI version](https://badge.fury.io/py/athm.svg)](https://badge.fury.io/py/athm)
 [![Python Versions](https://img.shields.io/pypi/pyversions/athm.svg)](https://pypi.org/project/athm/)
@@ -8,6 +8,8 @@
 A modern, type-safe Python library for the ATH Móvil payment platform.
 
 > **Note**: This is an unofficial, third-party library and is not affiliated with, endorsed by, or supported by ATH Móvil or EVERTEC. For official API documentation, see the [ATH Móvil Payment Button API](https://github.com/evertec/ATHM-Payment-Button-API).
+
+> Developed with AI assistance using Claude Code (claude.ai)
 
 ## Features
 

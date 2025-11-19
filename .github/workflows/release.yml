@@ -32,21 +32,13 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          uv sync --all-extras --dev
-          uv pip install build twine
+        run: uv sync --all-extras --dev
 
       - name: Run tests
-        run: |
-          uv run pytest tests/ -v
+        run: uv run pytest tests/ -v
 
       - name: Build package
-        run: |
-          uv run python -m build
-
-      - name: Check package
-        run: |
-          uv run twine check dist/*
+        run: uv build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
