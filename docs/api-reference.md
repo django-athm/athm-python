@@ -6,90 +6,383 @@ Complete reference for the key classes and methods in the ATH Móvil unofficial 
 
 ### ATHMovilClient
 
-::athm.client.ATHMovilClient
-    options:
-      show_source: false
-      heading_level: 4
-      members:
-        - __init__
-        - create_payment
-        - find_payment
-        - authorize_payment
-        - wait_for_confirmation
-        - process_complete_payment
-        - update_phone_number
-        - cancel_payment
-        - refund_payment
-        - close
+Main client for interacting with the ATH Móvil Payment API.
+
+**Initialization:**
+
+```python
+from athm import ATHMovilClient
+
+client = ATHMovilClient(
+    public_token="your_public_token",
+    private_token="your_private_token",  # Optional, required for refunds
+    base_url="https://payments.athmovil.com",  # Default
+    timeout=30,  # Request timeout in seconds
+    max_retries=3,  # Automatic retry attempts
+    verify_ssl=True  # SSL certificate verification
+)
+```
+
+**Parameters:**
+
+- `public_token` (str, required): Your ATH Business public token
+- `private_token` (str, optional): Your ATH Business private token (required only for refunds)
+- `base_url` (str): API base URL (defaults to production)
+- `timeout` (int | float): Request timeout in seconds (default: 30)
+- `max_retries` (int): Maximum number of retry attempts (default: 3)
+- `verify_ssl` (bool): Whether to verify SSL certificates (default: True)
+
+**Context Manager:**
+
+```python
+with ATHMovilClient(public_token="...") as client:
+    payment = client.create_payment(...)
+# Automatically closes connection
+```
+
+---
+
+#### create_payment()
+
+Create a new payment ticket.
+
+```python
+payment = client.create_payment(
+    total="50.00",
+    phone_number="7875551234",
+    subtotal="50.00",
+    tax="0.00",
+    metadata1="Order-123",  # Optional
+    metadata2="Customer-456",  # Optional
+    timeout=600  # Payment expiry in seconds (min: 120)
+)
+```
+
+**Parameters:**
+
+- `total` (str): Total payment amount ($1.00 - $1,500.00)
+- `phone_number` (str): Customer's 10-digit phone number
+- `subtotal` (str): Subtotal amount before tax
+- `tax` (str): Tax amount
+- `metadata1` (str, optional): Custom metadata (max 40 chars)
+- `metadata2` (str, optional): Custom metadata (max 40 chars)
+- `timeout` (int, optional): Payment timeout in seconds (min: 120)
+
+**Returns:** `PaymentResponse` with `ecommerce_id` and `auth_token`
+
+**Raises:** `ValidationError`, `AuthenticationError`, `NetworkError`
+
+---
+
+#### find_payment()
+
+Check the status of a payment.
+
+```python
+status = client.find_payment(ecommerce_id="abc123")
+```
+
+**Parameters:**
+
+- `ecommerce_id` (str): The payment ID from create_payment()
+
+**Returns:** `TransactionResponse` with current payment status
+
+**Raises:** `TransactionError`, `AuthenticationError`
+
+---
+
+#### authorize_payment()
+
+Authorize and complete a confirmed payment.
+
+```python
+result = client.authorize_payment(ecommerce_id="abc123")
+reference_number = result.data.reference_number
+```
+
+**Parameters:**
+
+- `ecommerce_id` (str): The payment ID from create_payment()
+
+**Returns:** `TransactionResponse` with `reference_number`
+
+**Raises:** `TransactionError` (if not confirmed yet), `AuthenticationError`
+
+---
+
+#### wait_for_confirmation()
+
+Poll for payment confirmation (blocking).
+
+```python
+confirmed = client.wait_for_confirmation(
+    ecommerce_id="abc123",
+    polling_interval=2.0,  # Check every 2 seconds
+    max_attempts=150  # Max 150 attempts (5 minutes)
+)
+```
+
+**Parameters:**
+
+- `ecommerce_id` (str): The payment ID from create_payment()
+- `polling_interval` (float): Seconds between status checks (default: 2.0)
+- `max_attempts` (int): Maximum polling attempts (default: 150)
+
+**Returns:** `TransactionResponse` when status is CONFIRM
+
+**Raises:** `TimeoutError` (if max attempts reached), `TransactionError`
+
+---
+
+#### process_complete_payment()
+
+High-level method to create, wait, and authorize a payment.
+
+```python
+result = client.process_complete_payment(
+    total="50.00",
+    phone_number="7875551234",
+    subtotal="50.00",
+    tax="0.00",
+    polling_interval=2.0,
+    max_polling_attempts=150
+)
+reference_number = result.data.reference_number
+```
+
+**Parameters:**
+
+- Same as `create_payment()` plus:
+- `polling_interval` (float): Seconds between status checks
+- `max_polling_attempts` (int): Maximum polling attempts
+
+**Returns:** `TransactionResponse` with completed payment
+
+**Raises:** `TimeoutError`, `TransactionError`, `ValidationError`
+
+---
+
+#### update_phone_number()
+
+Update the phone number for an existing payment.
+
+```python
+client.update_phone_number(
+    ecommerce_id="abc123",
+    phone_number="7875559999"
+)
+```
+
+**Parameters:**
+
+- `ecommerce_id` (str): The payment ID
+- `phone_number` (str): New 10-digit phone number
+
+**Returns:** `SuccessResponse`
+
+**Raises:** `ValidationError`, `TransactionError`
+
+---
+
+#### cancel_payment()
+
+Cancel a pending payment.
+
+```python
+client.cancel_payment(ecommerce_id="abc123")
+```
+
+**Parameters:**
+
+- `ecommerce_id` (str): The payment ID to cancel
+
+**Returns:** `SuccessResponse`
+
+**Raises:** `TransactionError` (if already completed)
+
+---
+
+#### refund_payment()
+
+Refund a completed payment (requires `private_token`).
+
+```python
+refund = client.refund_payment(
+    reference_number="123456",
+    amount="50.00",
+    message="Refund for order cancellation"  # Optional, max 50 chars
+)
+```
+
+**Parameters:**
+
+- `reference_number` (str): The reference number from completed payment
+- `amount` (str): Refund amount (must match or be less than original)
+- `message` (str, optional): Refund reason (max 50 chars)
+
+**Returns:** `RefundResponse` with refund details
+
+**Raises:** `RefundError`, `AuthenticationError` (if no private_token)
+
+---
+
+#### close()
+
+Close the HTTP client connection.
+
+```python
+client.close()
+```
+
+Always call this when done, or use the context manager pattern.
+
+---
 
 ## Models
 
-### Payment Models
+### PaymentRequest
 
-#### PaymentRequest
+Request model for creating payments.
 
-::: athm.models.PaymentRequest
-    options:
-      show_source: false
-      heading_level: 5
+```python
+from athm.models import PaymentRequest
 
-#### PaymentResponse
+request = PaymentRequest(
+    total="50.00",
+    phone="7875551234",
+    subtotal="50.00",
+    tax="0.00",
+    metadata1="Order-123",
+    metadata2="Customer-456",
+    timeout=600
+)
+```
 
-::: athm.models.PaymentResponse
-    options:
-      show_source: false
-      heading_level: 5
+**Fields:**
 
-#### PaymentItem
+- `total` (str): Total amount
+- `phone` (str): 10-digit phone number
+- `subtotal` (str): Subtotal before tax
+- `tax` (str): Tax amount
+- `metadata1` (str | None): Custom metadata
+- `metadata2` (str | None): Custom metadata
+- `timeout` (int): Timeout in seconds
 
-::: athm.models.PaymentItem
-    options:
-      show_source: false
-      heading_level: 5
+---
 
-### Transaction Models
+### PaymentResponse
 
-#### TransactionResponse
+Response from creating a payment.
 
-::: athm.models.TransactionResponse
-    options:
-      show_source: false
-      heading_level: 5
+```python
+payment = client.create_payment(...)
 
-#### TransactionData
+print(payment.ecommerce_id)  # Payment ID
+print(payment.auth_token)    # Authorization token
+print(payment.expires_in)    # Expiry timestamp
+```
 
-::: athm.models.TransactionData
-    options:
-      show_source: false
-      heading_level: 5
+**Fields:**
 
-#### TransactionStatus
+- `ecommerce_id` (str): Unique payment identifier
+- `auth_token` (str): Authorization token for this payment
+- `expires_in` (str): ISO 8601 expiry timestamp
 
-::: athm.models.TransactionStatus
-    options:
-      show_source: false
-      heading_level: 5
-      members:
-        - OPEN
-        - CONFIRM
-        - COMPLETED
-        - CANCEL
+---
 
-### Refund Models
+### TransactionResponse
 
-#### RefundRequest
+Response from payment status and authorization operations.
 
-::: athm.models.RefundRequest
-    options:
-      show_source: false
-      heading_level: 5
+```python
+status = client.find_payment(ecommerce_id)
 
-#### RefundResponse
+print(status.status)  # "OPEN", "CONFIRM", "COMPLETED", "CANCEL"
+print(status.data.reference_number)  # Available after authorization
+print(status.data.daily_transaction_id)
+```
 
-::: athm.models.RefundResponse
-    options:
-      show_source: false
-      heading_level: 5
+**Fields:**
+
+- `status` (str): Payment status
+- `data` (TransactionData): Transaction details
+
+**TransactionData fields:**
+
+- `reference_number` (str | None): Transaction reference (after completion)
+- `daily_transaction_id` (int | None): Daily transaction ID
+- `name` (str | None): Customer name
+- `phone_number` (str | None): Customer phone
+- `metadata1` (str | None): Custom metadata
+- `metadata2` (str | None): Custom metadata
+- `tax` (str | None): Tax amount
+- `subtotal` (str | None): Subtotal
+- `total` (str | None): Total amount
+- `fee` (str | None): Processing fee
+- `net_amount` (str | None): Net amount after fee
+- `total_refunded` (str | None): Total refunded amount
+- `items` (list[PaymentItem] | None): Payment items
+
+---
+
+### TransactionStatus
+
+Enum of possible payment statuses.
+
+```python
+from athm.models import TransactionStatus
+
+# Available statuses:
+TransactionStatus.OPEN       # Payment created, awaiting customer
+TransactionStatus.CONFIRM    # Customer confirmed, ready to authorize
+TransactionStatus.COMPLETED  # Payment authorized and completed
+TransactionStatus.CANCEL     # Payment cancelled or timed out
+```
+
+---
+
+### RefundRequest
+
+Request model for refunds.
+
+```python
+from athm.models import RefundRequest
+
+refund_req = RefundRequest(
+    reference_number="123456",
+    amount="50.00",
+    message="Customer requested refund"
+)
+```
+
+**Fields:**
+
+- `reference_number` (str): Original payment reference
+- `amount` (str): Refund amount
+- `message` (str | None): Refund reason (max 50 chars)
+
+---
+
+### RefundResponse
+
+Response from refund operations.
+
+```python
+refund = client.refund_payment(...)
+
+print(refund.refund_status)  # "completed"
+print(refund.reference_number)
+```
+
+**Fields:**
+
+- `refund_status` (str): Refund status
+- `reference_number` (str): Original transaction reference
+- `date` (str | None): Refund date
+- `daily_transaction_id` (str | None): Transaction ID
+
+---
 
 ## Exceptions
 
@@ -97,75 +390,158 @@ Complete reference for the key classes and methods in the ATH Móvil unofficial 
 
 All exceptions inherit from `ATHMovilError`:
 
-```python
+```
 ATHMovilError (base exception)
 ├── AuthenticationError          # Invalid tokens, auth failures
 ├── ValidationError              # Invalid amounts, phone, metadata
 ├── InvalidRequestError          # Malformed requests
-├── TransactionError            # Transaction state errors
-│   ├── PaymentError            # Payment-specific errors
-│   └── RefundError             # Refund-specific errors
-├── TimeoutError                # Network or polling timeout
-├── RateLimitError              # Too many requests
-├── NetworkError                # Connection issues
-└── InternalServerError         # ATH Móvil server errors
+├── TransactionError             # Transaction state errors
+│   ├── PaymentError             # Payment-specific errors
+│   └── RefundError              # Refund-specific errors
+├── TimeoutError                 # Network or polling timeout
+├── RateLimitError               # Too many requests
+├── NetworkError                 # Connection issues
+└── InternalServerError          # ATH Móvil server errors
 ```
 
 ### ATHMovilError
 
-::: athm.exceptions.ATHMovilError
-    options:
-      show_source: false
-      heading_level: 4
+Base exception for all API errors.
+
+```python
+from athm import ATHMovilError
+
+try:
+    payment = client.create_payment(...)
+except ATHMovilError as e:
+    print(f"Error: {e}")
+    print(f"Error code: {e.error_code}")
+    print(f"Status code: {e.status_code}")
+    print(f"Response: {e.response_data}")
+```
+
+**Attributes:**
+
+- `message` (str): Error message
+- `error_code` (str | None): ATH Móvil API error code
+- `status_code` (int | None): HTTP status code
+- `response_data` (dict | None): Full API response
+
+---
 
 ### AuthenticationError
 
-::: athm.exceptions.AuthenticationError
-    options:
-      show_source: false
-      heading_level: 4
+Raised when authentication fails.
+
+```python
+from athm import AuthenticationError
+
+try:
+    payment = client.create_payment(...)
+except AuthenticationError as e:
+    print("Invalid or expired token")
+```
+
+**Common error codes:** `token.invalid.header`, `token.expired`, `BTRA_0401`, `BTRA_0017`
+
+---
 
 ### ValidationError
 
-::: athm.exceptions.ValidationError
-    options:
-      show_source: false
-      heading_level: 4
+Raised when input validation fails.
+
+```python
+from athm import ValidationError
+
+try:
+    payment = client.create_payment(total="0.50", ...)  # Too low
+except ValidationError as e:
+    print(f"Invalid input: {e}")
+```
+
+**Common error codes:** `BTRA_0001` (amount too low), `BTRA_0004` (amount too high), `BTRA_0038` (metadata too long)
+
+---
 
 ### TransactionError
 
-::: athm.exceptions.TransactionError
-    options:
-      show_source: false
-      heading_level: 4
+Raised when transaction operations fail.
+
+```python
+from athm import TransactionError
+
+try:
+    result = client.authorize_payment(ecommerce_id)
+except TransactionError as e:
+    if e.error_code == "BTRA_0032":
+        print("Payment not confirmed yet")
+```
+
+**Common error codes:** `BTRA_0032` (not confirmed), `BTRA_0037` (cancelled), `BTRA_0039` (expired)
+
+---
 
 ### PaymentError
 
-::: athm.exceptions.PaymentError
-    options:
-      show_source: false
-      heading_level: 4
+Subclass of `TransactionError` for payment-specific errors.
+
+---
 
 ### RefundError
 
-::: athm.exceptions.RefundError
-    options:
-      show_source: false
-      heading_level: 4
+Subclass of `TransactionError` for refund-specific errors.
+
+---
 
 ### TimeoutError
 
-::: athm.exceptions.TimeoutError
-    options:
-      show_source: false
-      heading_level: 4
+Raised when requests or polling timeout.
+
+```python
+from athm import TimeoutError
+
+try:
+    confirmed = client.wait_for_confirmation(ecommerce_id)
+except TimeoutError:
+    print("Customer didn't confirm in time")
+    client.cancel_payment(ecommerce_id)
+```
+
+---
 
 ### NetworkError
 
-::: athm.exceptions.NetworkError
-    options:
-      show_source: false
-      heading_level: 4
+Raised for network and connection issues.
+
+```python
+from athm import NetworkError
+
+try:
+    payment = client.create_payment(...)
+except NetworkError as e:
+    print("Network error, will retry")
+```
+
+**Error code:** `BTRA_9998`
+
+---
+
+### InternalServerError
+
+Raised for ATH Móvil server errors.
+
+```python
+from athm import InternalServerError
+
+try:
+    payment = client.create_payment(...)
+except InternalServerError as e:
+    print("ATH Móvil server error")
+```
+
+**Error code:** `BTRA_9999`
+
+---
 
 ## Quick Reference
 

@@ -21,20 +21,6 @@ theme:
 
 plugins:
   - search
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            show_source: true
-            show_root_heading: true
-            show_root_toc_entry: true
-            show_signature_annotations: true
-            show_symbol_type_heading: true
-            show_symbol_type_toc: true
-            members_order: source
-            separate_signature: true
-            line_length: 100
-            docstring_section_style: spacy
 
 markdown_extensions:
   - abbr
