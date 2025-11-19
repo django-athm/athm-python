@@ -54,10 +54,10 @@ payment = client.create_payment(
     ],
 )
 
-confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
+confirmed = client.wait_for_confirmation(payment.ecommerce_id)
 
 if confirmed:
-    result = client.authorize_payment(payment.data.ecommerce_id)
+    result = client.authorize_payment(payment.ecommerce_id)
     print(f"Payment completed: {result.data.reference_number}")
 ```
 

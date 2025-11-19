@@ -17,12 +17,6 @@ class TransactionStatus(str, Enum):
     CANCEL = "CANCEL"
 
 
-class Environment(str, Enum):
-    """Available environments."""
-
-    PRODUCTION = "production"
-
-
 class PaymentItem(BaseModel):
     """Item in a payment request."""
 
@@ -69,7 +63,6 @@ class PaymentRequest(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    env: Environment = Environment.PRODUCTION
     public_token: str = Field(..., alias="publicToken")
     timeout: str = Field(default="600")
     total: str

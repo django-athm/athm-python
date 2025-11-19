@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from athm.models import (
     APIError,
-    Environment,
     PaymentItem,
     PaymentRequest,
     PaymentResponse,
@@ -122,7 +121,6 @@ class TestPaymentRequest:
         assert request.public_token == "test_token"
         assert request.total == "100.00"
         assert request.phone_number == "7875551234"
-        assert request.env == Environment.PRODUCTION
 
     def test_payment_request_defaults(self):
         request = PaymentRequest(
@@ -132,7 +130,6 @@ class TestPaymentRequest:
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="100.00")],
         )
         assert request.timeout == "600"
-        assert request.env == Environment.PRODUCTION
         assert request.tax is None
         assert request.subtotal is None
 

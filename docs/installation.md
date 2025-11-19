@@ -1,5 +1,36 @@
 # Installation
 
+!!! danger "No Test Environment Available"
+    **Important**: ATH Móvil does not provide a sandbox or test environment. All API calls are made to the production environment with real money transactions. You must have:
+
+    - An active ATH Business account with a registered payment card
+    - An active ATH Móvil personal account (separate from business account)
+    - Different payment cards for your business and personal accounts
+
+    When testing, you will create real payment requests that require actual confirmation and cancellation.
+
+## Prerequisites
+
+Before installing the library, ensure you have:
+
+### Required Accounts
+
+1. **ATH Business Account**
+   - Active merchant account with verified business information
+   - Registered payment card linked to the business account
+   - Access to ATH Business app or web portal for API credential management
+
+2. **ATH Móvil Personal Account**
+   - Active personal ATH Móvil account for testing
+   - Must use a **different payment card** than your business account
+   - Cannot use the same card for customer and merchant transactions (will trigger error BTRA_0003)
+
+### Technical Requirements
+
+- Python 3.10 or higher
+- Active internet connection (all API calls require HTTPS)
+- Secure environment for storing API credentials
+
 ## Install the Package
 
 ### Using pip
@@ -48,6 +79,22 @@ Once your account is verified:
 |------------|--------------|-------------|
 | **Public Token** | All payment operations | Create, check, authorize, cancel payments |
 | **Private Token** | Refunds only | Process refunds on completed payments |
+
+### Token Lifecycle and Expiry
+
+!!! warning "Token Expiration"
+    API tokens can expire after a period specified by ATH Business. When a token expires:
+
+    - You will receive error `token.expired` or `BTRA_0401`/`BTRA_0402`/`BTRA_0403`
+    - You must generate new tokens from the ATH Business portal
+    - No automatic token refresh is available
+
+**Best practices:**
+
+- Monitor for authentication errors in your application logs
+- Have a process to quickly rotate expired tokens
+- Store tokens securely using environment variables or secret managers
+- Never hardcode tokens in your source code
 
 ## Configure Environment Variables
 
