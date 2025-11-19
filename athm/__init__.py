@@ -24,7 +24,7 @@ from athm.models import (
     TransactionStatus,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0b0"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
