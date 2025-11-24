@@ -5,11 +5,8 @@ from athm.exceptions import (
     ATHMovilError,
     AuthenticationError,
     InternalServerError,
-    InvalidRequestError,
     NetworkError,
-    PaymentError,
     RateLimitError,
-    RefundError,
     TimeoutError,
     TransactionError,
     ValidationError,
@@ -36,16 +33,15 @@ class TestATHMovilError:
         assert error.error_code == "TEST_001"
         assert error.status_code == 400
         assert error.response_data == {"field": "value"}
-        assert "Test error | Error Code: TEST_001 | HTTP Status: 400" in str(error)
+        assert str(error) == "Test error"
 
-    def test_error_with_known_error_code(self):
+    def test_error_with_error_code(self):
         error = ATHMovilError(
             message="Original message",
             error_code=ErrorCode.BTRA_0001,
         )
-        # Message should be replaced with the one from ERROR_MESSAGES
-        assert "below minimum" in error.message
-        assert "BTRA_0001" in error.message
+        assert error.message == "Original message"
+        assert error.error_code == ErrorCode.BTRA_0001
 
     def test_error_representation(self):
         error = ATHMovilError(
@@ -55,9 +51,7 @@ class TestATHMovilError:
         )
         repr_str = repr(error)
         assert "ATHMovilError" in repr_str
-        assert "message='Test'" in repr_str
-        assert "error_code='CODE'" in repr_str
-        assert "status_code=400" in repr_str
+        assert "Test" in repr_str
 
 
 class TestSpecificExceptions:
@@ -73,16 +67,6 @@ class TestSpecificExceptions:
 
     def test_transaction_error(self):
         error = TransactionError("Transaction failed")
-        assert isinstance(error, ATHMovilError)
-
-    def test_payment_error(self):
-        error = PaymentError("Payment failed")
-        assert isinstance(error, TransactionError)
-        assert isinstance(error, ATHMovilError)
-
-    def test_refund_error(self):
-        error = RefundError("Refund failed")
-        assert isinstance(error, TransactionError)
         assert isinstance(error, ATHMovilError)
 
     def test_network_error(self):
@@ -162,7 +146,7 @@ class TestCreateExceptionFromResponse:
             assert isinstance(error, TransactionError)
             assert error.error_code == code
 
-    def test_invalid_request_error_codes(self):
+    def test_business_error_codes_map_to_validation(self):
         business_codes = [
             ErrorCode.BTRA_0003,  # Same card
             ErrorCode.BTRA_0009,  # Business not active
@@ -176,7 +160,7 @@ class TestCreateExceptionFromResponse:
                 "errorcode": code,
             }
             error = create_exception_from_response(response, 400)
-            assert isinstance(error, InvalidRequestError)
+            assert isinstance(error, ValidationError)
             assert error.error_code == code
 
     def test_network_error_code(self):
@@ -214,7 +198,7 @@ class TestCreateExceptionFromResponse:
             "message": "Bad request",
         }
         error = create_exception_from_response(response, 400)
-        assert isinstance(error, InvalidRequestError)
+        assert isinstance(error, ValidationError)
         assert error.status_code == 400
 
     def test_status_code_mapping_429(self):
@@ -244,7 +228,7 @@ class TestCreateExceptionFromResponse:
             "errorcode": "UNKNOWN_CODE",
         }
         error = create_exception_from_response(response, 400)
-        assert type(error) is InvalidRequestError  # Not a subclass
+        assert type(error) is ValidationError  # Falls back to status code mapping
         assert error.error_code == "UNKNOWN_CODE"
 
     def test_no_error_code_default(self):
@@ -257,16 +241,15 @@ class TestCreateExceptionFromResponse:
         assert error.error_code is None
         assert error.status_code == 418
 
-    def test_error_message_from_constants(self):
+    def test_error_message_from_api(self):
         response = {
             "status": "error",
-            "message": "Original message",
+            "message": "Original message from API",
             "errorcode": ErrorCode.BTRA_0001,
         }
         error = create_exception_from_response(response, 400)
-        # Should use message from ERROR_MESSAGES
-        assert "below minimum" in error.message
-        assert "$1.00" in error.message
+        # Should use message from API response, not a lookup dict
+        assert error.message == "Original message from API"
 
     def test_response_data_preserved(self):
         response = {

@@ -13,6 +13,7 @@ from athm.exceptions import (
     AuthenticationError,
     NetworkError,
     TimeoutError,
+    TransactionError,
     ValidationError,
 )
 from athm.models import PaymentResponse, TransactionResponse, TransactionStatus
@@ -39,30 +40,8 @@ class TestClientInitialization:
             ATHMovilClient(public_token="")
 
     def test_init_with_whitespace_token(self):
-        with pytest.raises(ValidationError, match="cannot be empty or whitespace"):
+        with pytest.raises(ValidationError, match="cannot be empty"):
             ATHMovilClient(public_token="   ")
-
-    def test_init_with_short_token(self):
-        with pytest.raises(ValidationError, match="too short"):
-            ATHMovilClient(public_token="abc123")
-
-    def test_init_with_leading_whitespace(self):
-        with pytest.raises(ValidationError, match="leading or trailing whitespace"):
-            ATHMovilClient(public_token=" validtoken123456789")
-
-    def test_init_with_trailing_whitespace(self):
-        with pytest.raises(ValidationError, match="leading or trailing whitespace"):
-            ATHMovilClient(public_token="validtoken123456789 ")
-
-    def test_init_with_placeholder_token(self):
-        placeholders = ["test", "placeholder", "your_token_here", "xxx", "todo"]
-        for placeholder in placeholders:
-            with pytest.raises(ValidationError, match="appears to be a placeholder"):
-                ATHMovilClient(public_token=placeholder)
-
-    def test_private_token_validation(self):
-        with pytest.raises(ValidationError, match="too short"):
-            ATHMovilClient(public_token="validtoken123456789", private_token="short")
 
     def test_custom_configuration(self, public_token: str):
         client = ATHMovilClient(
@@ -189,7 +168,92 @@ class TestFindPaymentOperations:
 
         with pytest.raises(ATHMovilError) as exc_info:
             client.find_payment(ecommerce_id)
-        assert "BTRA_0031" in str(exc_info.value)
+        assert exc_info.value.error_code == "BTRA_0031"
+
+
+class TestWaitForConfirmation:
+    def test_wait_for_confirmation_success(
+        self,
+        client: ATHMovilClient,
+        httpx_mock: HTTPXMock,
+        ecommerce_id: str,
+    ):
+        # First poll: OPEN status
+        open_response = create_mock_transaction(TransactionStatus.OPEN)
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
+            json=open_response,
+            status_code=200,
+        )
+
+        # Second poll: CONFIRM status
+        confirm_response = create_mock_transaction(TransactionStatus.CONFIRM)
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
+            json=confirm_response,
+            status_code=200,
+        )
+
+        result = client.wait_for_confirmation(ecommerce_id, polling_interval=0.1)
+        assert result is True
+
+    def test_wait_for_confirmation_immediate(
+        self,
+        client: ATHMovilClient,
+        httpx_mock: HTTPXMock,
+        ecommerce_id: str,
+    ):
+        # Already confirmed
+        confirm_response = create_mock_transaction(TransactionStatus.CONFIRM)
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
+            json=confirm_response,
+            status_code=200,
+        )
+
+        result = client.wait_for_confirmation(ecommerce_id)
+        assert result is True
+
+    def test_wait_for_confirmation_timeout(
+        self,
+        client: ATHMovilClient,
+        httpx_mock: HTTPXMock,
+        ecommerce_id: str,
+    ):
+        # Always return OPEN status
+        # timeout=1s, interval=0.1s = 11 polls (0.0, 0.1, 0.2, ..., 1.0)
+        open_response = create_mock_transaction(TransactionStatus.OPEN)
+        for _ in range(11):
+            httpx_mock.add_response(
+                method="POST",
+                url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
+                json=open_response,
+                status_code=200,
+            )
+
+        with pytest.raises(TimeoutError, match="Payment not confirmed within"):
+            client.wait_for_confirmation(ecommerce_id, timeout=1, polling_interval=0.1)
+
+    def test_wait_for_confirmation_cancelled(
+        self,
+        client: ATHMovilClient,
+        httpx_mock: HTTPXMock,
+        ecommerce_id: str,
+    ):
+        # Payment was cancelled
+        cancel_response = create_mock_transaction(TransactionStatus.CANCEL)
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
+            json=cancel_response,
+            status_code=200,
+        )
+
+        with pytest.raises(TransactionError, match="Payment was cancelled"):
+            client.wait_for_confirmation(ecommerce_id)
 
 
 class TestAuthorizationOperations:
@@ -357,116 +421,6 @@ class TestUpdatePhoneOperations:
             client.update_phone_number(ecommerce_id, "7875559999")
 
 
-class TestWaitForConfirmation:
-    def test_wait_for_confirmation_success(
-        self,
-        client: ATHMovilClient,
-        httpx_mock: HTTPXMock,
-        ecommerce_id: str,
-    ):
-        # First response: OPEN
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
-            json=create_mock_transaction(TransactionStatus.OPEN),
-        )
-        # Second response: CONFIRM
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
-            json=create_mock_transaction(TransactionStatus.CONFIRM),
-        )
-
-        response = client.wait_for_confirmation(
-            ecommerce_id,
-            polling_interval=0.01,  # Fast polling for tests
-        )
-
-        assert response.data
-        assert response.data.ecommerce_status == TransactionStatus.CONFIRM
-
-    def test_wait_for_confirmation_cancelled(
-        self,
-        client: ATHMovilClient,
-        httpx_mock: HTTPXMock,
-        ecommerce_id: str,
-    ):
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
-            json=create_mock_transaction(TransactionStatus.CANCEL),
-        )
-
-        with pytest.raises(ATHMovilError, match="Payment was cancelled"):
-            client.wait_for_confirmation(ecommerce_id, polling_interval=0.01)
-
-    def test_wait_for_confirmation_timeout(
-        self,
-        client: ATHMovilClient,
-        httpx_mock: HTTPXMock,
-        ecommerce_id: str,
-    ):
-        # Always return OPEN status - match max_attempts=3
-        for _ in range(3):
-            httpx_mock.add_response(
-                method="POST",
-                url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
-                json=create_mock_transaction(TransactionStatus.OPEN),
-            )
-
-        with pytest.raises(TimeoutError):
-            client.wait_for_confirmation(
-                ecommerce_id,
-                polling_interval=0.01,
-                max_attempts=3,
-            )
-
-
-class TestCompletePaymentFlow:
-    def test_process_complete_payment_success(
-        self,
-        client: ATHMovilClient,
-        httpx_mock: HTTPXMock,
-        mock_payment_response: dict[str, Any],
-        auth_token: str,
-    ):
-        # Mock create payment
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['payment']}",
-            json=mock_payment_response,
-        )
-
-        # Mock find payment - first OPEN, then CONFIRM
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
-            json=create_mock_transaction(TransactionStatus.OPEN),
-        )
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['find_payment']}",
-            json=create_mock_transaction(TransactionStatus.CONFIRM),
-        )
-
-        # Mock authorization
-        httpx_mock.add_response(
-            method="POST",
-            url=f"https://payments.athmovil.com{ENDPOINTS['authorization']}",
-            json=create_mock_transaction(TransactionStatus.COMPLETED),
-        )
-
-        response = client.process_complete_payment(
-            total="5.00",
-            phone_number="7875551234",
-            polling_interval=0.01,
-            items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
-        )
-
-        assert response.data
-        assert response.data.ecommerce_status == TransactionStatus.COMPLETED
-
-
 class TestErrorHandling:
     def test_network_error_with_retry(
         self,
@@ -558,61 +512,3 @@ class TestAdditionalCoverage:
 
         with pytest.raises(NetworkError, match="HTTP error"):
             client.find_payment(ecommerce_id)
-
-
-class TestFriendlyValidationErrors:
-    """Tests for clean validation error messages."""
-
-    def test_missing_items_field_error(self, client: ATHMovilClient):
-        """Test that missing items field shows the error type."""
-        with pytest.raises(ValidationError, match="items: missing"):
-            client.create_payment(
-                total="5.00",
-                phone_number="7875551234",
-                # items field is missing
-            )
-
-    def test_invalid_phone_number_format(self, client: ATHMovilClient):
-        """Test that invalid phone number shows the error type."""
-        with pytest.raises(ValidationError, match="phone_number: string_pattern_mismatch"):
-            client.create_payment(
-                total="5.00",
-                phone_number="123",  # Too short
-                items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
-            )
-
-    def test_update_phone_invalid_format(
-        self, client: ATHMovilClient, ecommerce_id: str, auth_token: str
-    ):
-        """Test that update_phone_number shows error type for invalid phone."""
-        client._auth_tokens[ecommerce_id] = auth_token
-
-        with pytest.raises(ValidationError, match="phone_number: string_pattern_mismatch"):
-            client.update_phone_number(ecommerce_id, "invalid")
-
-    def test_refund_validation_error_shows_type(self, client: ATHMovilClient):
-        """Test that refund validation errors show error type."""
-        with pytest.raises(ValidationError, match="Validation error"):
-            client.refund_payment(
-                reference_number="REF123",
-                amount="invalid_amount",
-            )
-
-    def test_multiple_validation_errors(self, client: ATHMovilClient):
-        """Test that multiple validation errors show all fields."""
-        with pytest.raises(ValidationError, match="Validation errors"):
-            client.create_payment(
-                total="5.00",
-                phone_number="",  # Invalid - empty
-                # items field is missing
-            )
-
-    def test_validation_error_string_too_long(self, client: ATHMovilClient):
-        """Test that string_too_long error type is exposed."""
-        with pytest.raises(ValidationError, match="string_too_long"):
-            client.create_payment(
-                total="5.00",
-                phone_number="7875551234",
-                metadata1="x" * 100,  # Way too long (max is 40)
-                items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
-            )

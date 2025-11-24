@@ -7,9 +7,10 @@ from athm.client import ATHMovilClient
 from athm.exceptions import (
     ATHMovilError,
     AuthenticationError,
-    InvalidRequestError,
-    PaymentError,
-    RefundError,
+    InternalServerError,
+    NetworkError,
+    RateLimitError,
+    TimeoutError,
     TransactionError,
     ValidationError,
 )
@@ -24,7 +25,7 @@ from athm.models import (
     TransactionStatus,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Raúl Negrón-Otero"
 __email__ = "raul.esteban.negron@gmail.com"
 
@@ -32,14 +33,15 @@ __all__ = [
     "ATHMovilClient",
     "ATHMovilError",
     "AuthenticationError",
-    "InvalidRequestError",
-    "PaymentError",
+    "InternalServerError",
+    "NetworkError",
     "PaymentItem",
     "PaymentRequest",
     "PaymentResponse",
-    "RefundError",
+    "RateLimitError",
     "RefundRequest",
     "RefundResponse",
+    "TimeoutError",
     "TransactionData",
     "TransactionError",
     "TransactionResponse",

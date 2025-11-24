@@ -1,6 +1,5 @@
 """ATH Móvil API Client implementation."""
 
-import contextlib
 import json
 import time
 from typing import Any
@@ -10,16 +9,17 @@ from pydantic import ValidationError as PydanticValidationError
 
 from athm.constants import BASE_URL, DEFAULT_HEADERS, ENDPOINTS, MAX_RETRIES, REQUEST_TIMEOUT
 from athm.exceptions import (
-    ATHMovilError,
     AuthenticationError,
     NetworkError,
     TimeoutError,
+    TransactionError,
     ValidationError,
     create_exception_from_response,
 )
 from athm.models import (
     CancelPaymentRequest,
     FindPaymentRequest,
+    PaymentItem,
     PaymentRequest,
     PaymentResponse,
     RefundRequest,
@@ -29,33 +29,7 @@ from athm.models import (
     TransactionStatus,
     UpdatePhoneRequest,
 )
-from athm.types import Headers, JSONDict, Self, Timeout
-
-
-def _format_validation_error(error: PydanticValidationError) -> str:
-    """Format Pydantic validation error concisely.
-
-    Args:
-        error: Pydantic ValidationError
-
-    Returns:
-        Formatted error message showing field and error type
-    """
-    errors = error.errors()
-    if not errors:
-        return "Invalid data"
-
-    # Format each error as "field: error_type"
-    error_msgs = []
-    for err in errors:
-        field = ".".join(str(loc) for loc in err["loc"])
-        error_type = err["type"]
-        error_msgs.append(f"{field}: {error_type}")
-
-    if len(error_msgs) == 1:
-        return f"Validation error - {error_msgs[0]}"
-    else:
-        return f"Validation errors - {'; '.join(error_msgs)}"
+from athm.types import Self, Timeout
 
 
 class ATHMovilClient:
@@ -90,13 +64,12 @@ class ATHMovilClient:
             timeout: Request timeout in seconds
             max_retries: Maximum retry attempts
             verify_ssl: Whether to verify SSL certificates
-        """
-        if not public_token:
-            raise ValidationError("public_token is required")
 
-        self._validate_token_format(public_token, "public_token")
-        if private_token:
-            self._validate_token_format(private_token, "private_token")
+        Raises:
+            ValidationError: If public_token is empty
+        """
+        if not public_token or not public_token.strip():
+            raise ValidationError("public_token is required and cannot be empty")
 
         self.public_token = public_token
         self.private_token = private_token
@@ -124,12 +97,6 @@ class ATHMovilClient:
             self._sync_client.close()
             self._sync_client = None
 
-    def __del__(self) -> None:
-        """Cleanup HTTP client on object destruction."""
-        if hasattr(self, "_sync_client") and self._sync_client:
-            with contextlib.suppress(Exception):
-                self._sync_client.close()
-
     @property
     def sync_client(self) -> httpx.Client:
         """Get or lazily initialize the synchronous HTTP client."""
@@ -142,31 +109,7 @@ class ATHMovilClient:
             )
         return self._sync_client
 
-    def _validate_token_format(self, token: str, token_name: str) -> None:
-        """Validate token format.
-
-        Args:
-            token: Token to validate
-            token_name: Name of the token for error messages
-
-        Raises:
-            ValidationError: If token format is invalid
-        """
-        if not token or not token.strip():
-            raise ValidationError(f"{token_name} cannot be empty or whitespace")
-
-        if token.startswith(" ") or token.endswith(" "):
-            raise ValidationError(f"{token_name} contains leading or trailing whitespace")
-
-        if token.lower() in ["test", "placeholder", "your_token_here", "xxx", "todo"]:
-            raise ValidationError(
-                f"{token_name} appears to be a placeholder. Please use your actual ATH Móvil token"
-            )
-
-        if len(token) < 10:
-            raise ValidationError(f"{token_name} appears to be invalid (too short)")
-
-    def _prepare_headers(self, auth_token: str | None = None) -> Headers:
+    def _prepare_headers(self, auth_token: str | None = None) -> dict[str, str]:
         """Prepare request headers.
 
         Args:
@@ -180,7 +123,7 @@ class ATHMovilClient:
             headers["Authorization"] = f"Bearer {auth_token}"
         return headers
 
-    def _handle_response(self, response: httpx.Response) -> JSONDict:
+    def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
         """Handle API response and raise appropriate exceptions.
 
         Args:
@@ -193,7 +136,7 @@ class ATHMovilClient:
             ATHMovilError: On API errors
         """
         try:
-            data: JSONDict = response.json()
+            data: dict[str, Any] = response.json()
         except json.JSONDecodeError as e:
             raise NetworkError(
                 f"Invalid JSON response: {e}",
@@ -209,10 +152,10 @@ class ATHMovilClient:
         self,
         method: str,
         endpoint: str,
-        json_data: JSONDict | None = None,
-        headers: Headers | None = None,
+        json_data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         retries: int = 0,
-    ) -> JSONDict:
+    ) -> dict[str, Any]:
         """Make synchronous HTTP request with retry logic.
 
         Args:
@@ -237,22 +180,16 @@ class ATHMovilClient:
                 json=json_data,
                 headers=headers,
             )
-
             return self._handle_response(response)
 
-        except httpx.TimeoutException as e:
+        except (httpx.TimeoutException, httpx.NetworkError) as e:
             if retries < self.max_retries:
                 backoff = 2**retries
                 time.sleep(backoff)
                 return self._make_request(method, endpoint, json_data, headers, retries + 1)
-            raise TimeoutError(f"Request timed out: {e}") from e
 
-        except httpx.NetworkError as e:
-            if retries < self.max_retries:
-                backoff = 2**retries
-                time.sleep(backoff)
-                return self._make_request(method, endpoint, json_data, headers, retries + 1)
-            raise NetworkError(f"Network error: {e}") from e
+            error_class = TimeoutError if isinstance(e, httpx.TimeoutException) else NetworkError
+            raise error_class(f"{type(e).__name__}: {e}") from e
 
         except httpx.HTTPError as e:
             raise NetworkError(f"HTTP error: {e}") from e
@@ -261,6 +198,7 @@ class ATHMovilClient:
         self,
         total: str,
         phone_number: str,
+        items: list[PaymentItem],
         **kwargs: Any,
     ) -> PaymentResponse:
         """Create a payment ticket.
@@ -268,7 +206,8 @@ class ATHMovilClient:
         Args:
             total: Total amount (1.00 to 1500.00)
             phone_number: Customer phone number (10 digits)
-            **kwargs: Additional payment fields (tax, subtotal, metadata1, etc.)
+            items: List of payment items
+            **kwargs: Additional payment fields (tax, subtotal, metadata1, metadata2, timeout)
 
         Returns:
             PaymentResponse with ecommerce_id and auth_token
@@ -282,10 +221,11 @@ class ATHMovilClient:
                 public_token=self.public_token,
                 total=total,
                 phone_number=phone_number,
+                items=items,
                 **kwargs,
             )
         except PydanticValidationError as e:
-            raise ValidationError(_format_validation_error(e)) from e
+            raise ValidationError(str(e)) from e
 
         response = self._make_request(
             "POST",
@@ -321,9 +261,7 @@ class ATHMovilClient:
             json_data=request_data.model_dump(by_alias=True),
         )
 
-        result = TransactionResponse(**response)
-
-        return result
+        return TransactionResponse(**response)
 
     def authorize_payment(
         self,
@@ -391,7 +329,7 @@ class ATHMovilClient:
                 phone_number=phone_number,
             )
         except PydanticValidationError as e:
-            raise ValidationError(_format_validation_error(e)) from e
+            raise ValidationError(str(e)) from e
 
         headers = self._prepare_headers(auth_token=token)
 
@@ -448,7 +386,7 @@ class ATHMovilClient:
             RefundResponse with refund details
 
         Raises:
-            ValueError: If private_token not configured
+            AuthenticationError: If private_token not configured
             ValidationError: On invalid input
             ATHMovilError: On API errors
         """
@@ -464,7 +402,7 @@ class ATHMovilClient:
                 message=message,
             )
         except PydanticValidationError as e:
-            raise ValidationError(_format_validation_error(e)) from e
+            raise ValidationError(str(e)) from e
 
         response = self._make_request(
             "POST",
@@ -477,100 +415,49 @@ class ATHMovilClient:
     def wait_for_confirmation(
         self,
         ecommerce_id: str,
+        timeout: int = 300,
         polling_interval: float = 2.0,
-        max_attempts: int | None = None,
-    ) -> TransactionResponse:
-        """Poll payment status until confirmed or timeout.
+    ) -> bool:
+        """Wait for customer to confirm payment.
 
-        Warning:
-            This method blocks the calling thread while polling. For applications
-            requiring concurrent operations, consider running in a separate thread
-            or using background task queues.
+        Polls payment status until customer confirms or timeout is reached.
 
         Args:
-            ecommerce_id: The payment ID to monitor
+            ecommerce_id: The payment ID from create_payment()
+            timeout: Maximum seconds to wait (default: 300)
             polling_interval: Seconds between status checks (default: 2.0)
-            max_attempts: Maximum polling attempts (None for unlimited)
 
         Returns:
-            TransactionResponse when status is CONFIRM or final state
+            True if payment was confirmed
 
         Raises:
-            TimeoutError: If max_attempts reached
-            ATHMovilError: On API errors or payment cancellation
+            TimeoutError: If timeout exceeded without confirmation
+            TransactionError: If payment was cancelled
 
         Example:
-            >>> client = ATHMovilClient(public_token="token")
-            >>> payment = client.create_payment(total="100.00", phone_number="7875551234")
-            >>> # This will block until payment is confirmed or timeout
-            >>> result = client.wait_for_confirmation(
-            ...     payment.data.ecommerce_id,
-            ...     polling_interval=2.0,
-            ...     max_attempts=30  # 60 seconds max
-            ... )
+            >>> payment = client.create_payment(...)
+            >>> client.wait_for_confirmation(payment.data.ecommerce_id)
+            >>> result = client.authorize_payment(payment.data.ecommerce_id)
         """
-        attempts = 0
+        elapsed = 0.0
+        while elapsed < timeout:
+            status = self.find_payment(ecommerce_id)
 
-        while max_attempts is None or attempts < max_attempts:
-            response = self.find_payment(ecommerce_id)
-
-            if response.data:
-                status = response.data.ecommerce_status
-                if status in [TransactionStatus.CONFIRM, TransactionStatus.COMPLETED]:
-                    return response
-                elif status == TransactionStatus.CANCEL:
-                    raise ATHMovilError(f"Payment was cancelled: {ecommerce_id}")
-
-            attempts += 1
-            if max_attempts and attempts >= max_attempts:
-                raise TimeoutError(f"Timeout waiting for payment confirmation: {ecommerce_id}")
+            if status.data and status.data.ecommerce_status == TransactionStatus.CONFIRM:
+                return True
+            elif status.data and status.data.ecommerce_status == TransactionStatus.CANCEL:
+                raise TransactionError(
+                    "Payment was cancelled",
+                    error_code="PAYMENT_CANCELLED",
+                )
 
             time.sleep(polling_interval)
+            elapsed += polling_interval
 
-        raise TimeoutError(f"Timeout waiting for payment confirmation: {ecommerce_id}")
-
-    def process_complete_payment(
-        self,
-        total: str,
-        phone_number: str,
-        polling_interval: float = 2.0,
-        max_wait_time: float | None = None,
-        **payment_kwargs: Any,
-    ) -> TransactionResponse:
-        """Create, wait for confirmation, and authorize payment.
-
-        This is a convenience method that handles the complete payment flow.
-
-        Args:
-            total: Total amount
-            phone_number: Customer phone number
-            polling_interval: Seconds between status checks
-            max_wait_time: Maximum time to wait for confirmation (seconds)
-            **payment_kwargs: Additional payment fields
-
-        Returns:
-            TransactionResponse with completed transaction
-
-        Raises:
-            ValidationError: On invalid input
-            TimeoutError: If confirmation timeout
-            ATHMovilError: On API errors
-        """
-        payment_response = self.create_payment(total, phone_number, **payment_kwargs)
-        ecommerce_id = payment_response.data.ecommerce_id
-
-        max_attempts = None
-        if max_wait_time:
-            max_attempts = int(max_wait_time / polling_interval)
-
-        try:
-            self.wait_for_confirmation(ecommerce_id, polling_interval, max_attempts)
-            return self.authorize_payment(ecommerce_id)
-
-        except (ValidationError, TimeoutError, ATHMovilError):
-            with contextlib.suppress(ATHMovilError):
-                self.cancel_payment(ecommerce_id)
-            raise
+        raise TimeoutError(
+            f"Payment not confirmed within {timeout} seconds",
+            error_code="POLLING_TIMEOUT",
+        )
 
     def close(self) -> None:
         """Close HTTP client and cleanup resources.
