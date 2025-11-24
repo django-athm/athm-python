@@ -10,10 +10,7 @@ All exceptions inherit from `ATHMovilError`:
 ATHMovilError (base exception)
 ├── AuthenticationError          # Invalid tokens, auth failures
 ├── ValidationError              # Invalid amounts, phone, metadata
-├── InvalidRequestError          # Malformed requests
 ├── TransactionError             # Transaction state errors
-│   ├── PaymentError             # Payment-specific errors
-│   └── RefundError              # Refund-specific errors
 ├── TimeoutError                 # Network or polling timeout
 ├── RateLimitError               # Too many requests
 ├── NetworkError                 # Connection issues
@@ -128,8 +125,6 @@ Invalid input data (amounts, phone numbers, metadata).
 
 **Recovery Strategy:**
 ```python
-from athm._utils import truncate_string, format_amount
-
 try:
     payment = client.create_payment(
         total="50.00",
@@ -146,7 +141,7 @@ except ValidationError as e:
             phone_number="7875551234",
             subtotal="50.00",
             tax="0.00",
-            metadata1=truncate_string(order_id, 40)
+            metadata1=order_id[:40]  # Max 40 characters
         )
     elif "BTRA_0004" in str(e):
         # Amount too high
@@ -174,9 +169,9 @@ try:
     result = client.authorize_payment(ecommerce_id)
 except TransactionError as e:
     if "BTRA_0032" in str(e):
-        # Not confirmed yet, wait longer
+        # Not confirmed yet, wait for confirmation
         print("Waiting for customer confirmation...")
-        confirmed = client.wait_for_confirmation(ecommerce_id)
+        client.wait_for_confirmation(ecommerce_id, timeout=60)
         result = client.authorize_payment(ecommerce_id)
 
     elif "BTRA_0037" in str(e) or "BTRA_0039" in str(e):
@@ -278,8 +273,6 @@ from athm import (
     AuthenticationError,
     ValidationError,
     TransactionError,
-    PaymentError,
-    RefundError,
     TimeoutError,
     NetworkError,
     InternalServerError,
@@ -292,7 +285,7 @@ from typing import Optional
 def create_payment_with_retry(
     client: ATHMovilClient,
     amount: str,
-    phone: str,
+    phone_number: str,
     max_retries: int = 3
 ) -> Optional[str]:
     """
@@ -304,9 +297,10 @@ def create_payment_with_retry(
         try:
             payment = client.create_payment(
                 total=amount,
-                phone_number=phone,
+                phone_number=phone_number,
                 subtotal=amount,
-                tax="0.00"
+                tax="0.00",
+                items=[]  # Required field
             )
             return payment.data.ecommerce_id
 
@@ -367,7 +361,7 @@ def create_payment_with_retry(
 def complete_payment_flow(
     client: ATHMovilClient,
     amount: str,
-    phone: str
+    phone_number: str
 ) -> Optional[str]:
     """
     Complete payment flow with error handling.
@@ -375,39 +369,25 @@ def complete_payment_flow(
     Returns reference_number on success.
     """
     # 1. Create payment
-    ecommerce_id = create_payment_with_retry(client, amount, phone)
+    ecommerce_id = create_payment_with_retry(client, amount, phone_number)
     if not ecommerce_id:
         return None
 
     try:
         # 2. Wait for confirmation
-        try:
-            client.wait_for_confirmation(
-                ecommerce_id,
-                polling_interval=2.0,
-                max_attempts=150  # 5 minutes
-            )
-        except TimeoutError:
-            print("Customer didn't confirm, cancelling")
-            client.cancel_payment(ecommerce_id)
-            return None
+        client.wait_for_confirmation(ecommerce_id, timeout=300)
 
         # 3. Authorize payment
-        try:
-            result = client.authorize_payment(ecommerce_id)
-            return result.data.reference_number
+        result = client.authorize_payment(ecommerce_id)
+        return result.data.reference_number
 
-        except TransactionError as e:
-            if "BTRA_0032" in str(e):
-                # Still not confirmed, wait more
-                print("Still waiting for confirmation...")
-                time.sleep(5)
-                result = client.authorize_payment(ecommerce_id)
-                return result.data.reference_number
-            else:
-                print(f"Transaction error: {e}")
-                return None
-
+    except TimeoutError:
+        print("Customer didn't confirm, cancelling")
+        client.cancel_payment(ecommerce_id)
+        return None
+    except TransactionError as e:
+        print(f"Transaction error: {e}")
+        return None
     except Exception as e:
         # Unexpected error, try to clean up
         print(f"Unexpected error: {e}")
@@ -426,7 +406,7 @@ if __name__ == "__main__":
         ref = complete_payment_flow(
             client,
             amount="25.00",
-            phone="7875551234"
+            phone_number="7875551234"
         )
 
         if ref:
@@ -446,7 +426,6 @@ Never log sensitive data (tokens, full phone numbers):
 
 ```python
 from athm import ATHMovilClient, ATHMovilError
-from athm._utils import mask_sensitive_data
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -562,34 +541,29 @@ except ValueError as e:
 ### Scenario: Polling Timeout
 
 ```python
-# Set reasonable timeout based on use case
-try:
-    # Quick checkout: 2 minute timeout
-    result = client.wait_for_confirmation(
-        ecommerce_id,
-        max_attempts=60  # 60 * 2s = 2 min
-    )
+from athm import TimeoutError
 
+# Quick checkout: 2 minute timeout
+try:
+    client.wait_for_confirmation(ecommerce_id, timeout=120)
 except TimeoutError:
-    # Graceful handling
+    # Graceful handling - send reminder and extend timeout
     print("Payment timed out, sending reminder...")
     send_sms_reminder(phone_number)
 
-    # Extended wait
+    # Extended wait (extra 5 minutes)
     try:
-        result = client.wait_for_confirmation(
-            ecommerce_id,
-            max_attempts=150  # Extra 5 minutes
-        )
+        client.wait_for_confirmation(ecommerce_id, timeout=300)
     except TimeoutError:
         # Give up
+        print("Extended timeout reached, cancelling payment")
         client.cancel_payment(ecommerce_id)
 ```
 
 ### Scenario: Refund Errors
 
 ```python
-from athm import RefundError
+from athm import TransactionError
 
 try:
     refund = client.refund_payment(
@@ -597,7 +571,7 @@ try:
         amount="50.00",
         message="Refund for order #123"
     )
-except RefundError as e:
+except TransactionError as e:
     if "not found" in str(e).lower():
         print("Invalid reference number")
     elif "already refunded" in str(e).lower():

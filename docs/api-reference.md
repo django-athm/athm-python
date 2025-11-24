@@ -50,8 +50,16 @@ Create a new payment ticket.
 payment = client.create_payment(
     total="50.00",
     phone_number="7875551234",
-    subtotal="50.00",
-    tax="0.00",
+    items=[
+        {
+            "name": "Product",
+            "description": "Description",
+            "quantity": "1",
+            "price": "50.00",
+        }
+    ],
+    subtotal="50.00",  # Optional
+    tax="0.00",  # Optional
     metadata1="Order-123",  # Optional
     metadata2="Customer-456",  # Optional
     timeout=600  # Payment expiry in seconds (min: 120)
@@ -62,8 +70,9 @@ payment = client.create_payment(
 
 - `total` (str): Total payment amount ($1.00 - $1,500.00)
 - `phone_number` (str): Customer's 10-digit phone number
-- `subtotal` (str): Subtotal amount before tax
-- `tax` (str): Tax amount
+- `items` (list[PaymentItem]): List of payment items (required)
+- `subtotal` (str): Subtotal amount before tax (optional)
+- `tax` (str): Tax amount (optional)
 - `metadata1` (str, optional): Custom metadata (max 40 chars)
 - `metadata2` (str, optional): Custom metadata (max 40 chars)
 - `timeout` (int, optional): Payment timeout in seconds (min: 120)
@@ -92,6 +101,30 @@ status = client.find_payment(ecommerce_id="abc123")
 
 ---
 
+#### wait_for_confirmation()
+
+Wait for customer to confirm payment by polling status.
+
+```python
+client.wait_for_confirmation(
+    ecommerce_id="abc123",
+    timeout=300,  # Default: 5 minutes
+    polling_interval=2.0  # Default: 2 seconds
+)
+```
+
+**Parameters:**
+
+- `ecommerce_id` (str): The payment ID from create_payment()
+- `timeout` (int, optional): Maximum seconds to wait (default: 300)
+- `polling_interval` (float, optional): Seconds between checks (default: 2.0)
+
+**Returns:** `True` if payment was confirmed
+
+**Raises:** `TimeoutError` (if timeout exceeded), `TransactionError` (if cancelled)
+
+---
+
 #### authorize_payment()
 
 Authorize and complete a confirmed payment.
@@ -108,58 +141,6 @@ reference_number = result.data.reference_number
 **Returns:** `TransactionResponse` with `reference_number`
 
 **Raises:** `TransactionError` (if not confirmed yet), `AuthenticationError`
-
----
-
-#### wait_for_confirmation()
-
-Poll for payment confirmation (blocking).
-
-```python
-confirmed = client.wait_for_confirmation(
-    ecommerce_id="abc123",
-    polling_interval=2.0,  # Check every 2 seconds
-    max_attempts=150  # Max 150 attempts (5 minutes)
-)
-```
-
-**Parameters:**
-
-- `ecommerce_id` (str): The payment ID from create_payment()
-- `polling_interval` (float): Seconds between status checks (default: 2.0)
-- `max_attempts` (int): Maximum polling attempts (default: 150)
-
-**Returns:** `TransactionResponse` when status is CONFIRM
-
-**Raises:** `TimeoutError` (if max attempts reached), `TransactionError`
-
----
-
-#### process_complete_payment()
-
-High-level method to create, wait, and authorize a payment.
-
-```python
-result = client.process_complete_payment(
-    total="50.00",
-    phone_number="7875551234",
-    subtotal="50.00",
-    tax="0.00",
-    polling_interval=2.0,
-    max_polling_attempts=150
-)
-reference_number = result.data.reference_number
-```
-
-**Parameters:**
-
-- Same as `create_payment()` plus:
-- `polling_interval` (float): Seconds between status checks
-- `max_polling_attempts` (int): Maximum polling attempts
-
-**Returns:** `TransactionResponse` with completed payment
-
-**Raises:** `TimeoutError`, `TransactionError`, `ValidationError`
 
 ---
 
@@ -223,7 +204,7 @@ refund = client.refund_payment(
 
 **Returns:** `RefundResponse` with refund details
 
-**Raises:** `RefundError`, `AuthenticationError` (if no private_token)
+**Raises:** `TransactionError`, `AuthenticationError` (if no private_token)
 
 ---
 
@@ -250,19 +231,21 @@ from athm.models import PaymentRequest
 
 request = PaymentRequest(
     total="50.00",
-    phone="7875551234",
+    phone_number="7875551234",
     subtotal="50.00",
     tax="0.00",
     metadata1="Order-123",
     metadata2="Customer-456",
-    timeout=600
+    timeout=600,
+    items=[]  # Required field
 )
 ```
 
 **Fields:**
 
 - `total` (str): Total amount
-- `phone` (str): 10-digit phone number
+- `phone_number` (str): 10-digit phone number
+- `items` (list[PaymentItem]): List of payment items (required)
 - `subtotal` (str): Subtotal before tax
 - `tax` (str): Tax amount
 - `metadata1` (str | None): Custom metadata
@@ -280,14 +263,12 @@ payment = client.create_payment(...)
 
 print(payment.data.ecommerce_id)  # Payment ID
 print(payment.data.auth_token)    # Authorization token
-print(payment.data.expires_in)    # Expiry timestamp
 ```
 
 **Fields:**
 
 - `ecommerce_id` (str): Unique payment identifier
 - `auth_token` (str): Authorization token for this payment
-- `expires_in` (str): ISO 8601 expiry timestamp
 
 ---
 
@@ -394,10 +375,7 @@ All exceptions inherit from `ATHMovilError`:
 ATHMovilError (base exception)
 ├── AuthenticationError          # Invalid tokens, auth failures
 ├── ValidationError              # Invalid amounts, phone, metadata
-├── InvalidRequestError          # Malformed requests
 ├── TransactionError             # Transaction state errors
-│   ├── PaymentError             # Payment-specific errors
-│   └── RefundError              # Refund-specific errors
 ├── TimeoutError                 # Network or polling timeout
 ├── RateLimitError               # Too many requests
 ├── NetworkError                 # Connection issues
@@ -481,18 +459,6 @@ except TransactionError as e:
 
 ---
 
-### PaymentError
-
-Subclass of `TransactionError` for payment-specific errors.
-
----
-
-### RefundError
-
-Subclass of `TransactionError` for refund-specific errors.
-
----
-
 ### TimeoutError
 
 Raised when requests or polling timeout.
@@ -501,7 +467,7 @@ Raised when requests or polling timeout.
 from athm import TimeoutError
 
 try:
-    confirmed = client.wait_for_confirmation(ecommerce_id)
+    client.wait_for_confirmation(ecommerce_id, timeout=300)
 except TimeoutError:
     print("Customer didn't confirm in time")
     client.cancel_payment(ecommerce_id)
@@ -557,15 +523,15 @@ client = ATHMovilClient(public_token="...")
 payment = client.create_payment(
     total="50.00",
     phone_number="7875551234",
+    items=[
+        {"name": "Product", "description": "Description", "quantity": "1", "price": "50.00"}
+    ],
     subtotal="50.00",
     tax="0.00"
 )
 
-# Check status
-status = client.find_payment(payment.data.ecommerce_id)
-
 # Wait for confirmation
-confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
+client.wait_for_confirmation(payment.data.ecommerce_id)
 
 # Authorize
 result = client.authorize_payment(payment.data.ecommerce_id)

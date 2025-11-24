@@ -47,35 +47,10 @@ second_refund = client.refund_payment(
 )
 ```
 
-### Check Refund Eligibility
-
-```python
-from athm import RefundError
-
-def can_refund(client: ATHMovilClient, reference_number: str) -> bool:
-    """Check if a payment can be refunded."""
-    try:
-        # Get payment status
-        # Note: Need to track ecommerce_id to check status
-        status = client.find_payment(ecommerce_id)
-
-        # Can only refund COMPLETED payments
-        if status.data.status != "COMPLETED":
-            return False
-
-        # Check if already refunded (track in your DB)
-        # ATH Móvil doesn't provide refund status via API
-
-        return True
-
-    except Exception:
-        return False
-```
-
 ### Refund Error Handling
 
 ```python
-from athm import RefundError, AuthenticationError
+from athm import TransactionError, AuthenticationError
 
 try:
     refund = client.refund_payment(
@@ -84,7 +59,7 @@ try:
     )
 except AuthenticationError:
     print("Missing or invalid private token")
-except RefundError as e:
+except TransactionError as e:
     if "not found" in str(e).lower():
         print("Invalid reference number")
     elif "already refunded" in str(e).lower():
@@ -107,14 +82,9 @@ with ATHMovilClient(public_token="...") as client:
     payment = client.create_payment(
         total="50.00",
         phone_number="7875551234",
-        subtotal="50.00",
-        tax="0.00"
+        items=[{"name": "Item", "description": "Item", "quantity": "1", "price": "50.00"}]
     )
-
-    confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
-    result = client.authorize_payment(payment.data.ecommerce_id)
-
-    print(f"Reference: {result.data.reference_number}")
+    print(f"Reference: {payment.data.ecommerce_id}")
 
 # Client is automatically closed here
 ```
@@ -151,12 +121,6 @@ client = ATHMovilClient(
     public_token="...",
     timeout=60  # 60 seconds
 )
-
-# Disable timeout (not recommended)
-client = ATHMovilClient(
-    public_token="...",
-    timeout=None  # Wait forever
-)
 ```
 
 ### Configure Retries
@@ -172,23 +136,6 @@ client = ATHMovilClient(
 client = ATHMovilClient(
     public_token="...",
     max_retries=0  # Fail immediately
-)
-```
-
-### Per-Operation Timeouts
-
-```python
-# Client default timeout
-client = ATHMovilClient(public_token="...", timeout=30)
-
-# Override for specific operation
-payment = client.create_payment(...)  # Uses 30s timeout
-
-# Longer wait for confirmation
-confirmed = client.wait_for_confirmation(
-    payment.data.ecommerce_id,
-    polling_interval=2.0,
-    max_attempts=300  # 10 minutes (300 * 2s)
 )
 ```
 

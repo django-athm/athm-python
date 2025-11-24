@@ -65,65 +65,55 @@ print("Customer will receive a push notification")
 The customer needs to open their ATH Móvil app and approve the payment:
 
 ```python
-# Option 1: Automatic polling (recommended)
 try:
-    confirmed = client.wait_for_confirmation(
-        payment.data.ecommerce_id,
-        polling_interval=2.0,  # Check every 2 seconds
-        max_attempts=150       # 5 minutes max (150 * 2s)
-    )
+    client.wait_for_confirmation(payment.data.ecommerce_id, timeout=300)
     print("Customer confirmed!")
 except TimeoutError:
-    print("Customer didn't confirm in time")
+    print("Timeout - cancelling payment")
     client.cancel_payment(payment.data.ecommerce_id)
+except TransactionError:
+    print("Payment was cancelled")
 ```
 
+**What happens:**
+- Customer receives push notification on their phone
+- Your app polls ATH Móvil API every 2 seconds
+- Customer opens app and approves or rejects
+- Status changes to `CONFIRM` when approved
+
+**Manual polling (advanced):**
+
+For custom polling logic or async frameworks:
+
 ```python
-# Option 2: Manual status checking
 import time
 
-max_wait = 300  # 5 minutes
+max_wait = 300
 elapsed = 0
 
 while elapsed < max_wait:
     status = client.find_payment(payment.data.ecommerce_id)
-
-    if status.data.status == "CONFIRM":
-        print("Customer confirmed!")
+    if status.data.ecommerce_status == "CONFIRM":
         break
-    elif status.data.status == "CANCEL":
-        print("Payment was cancelled")
-        break
-
+    elif status.data.ecommerce_status == "CANCEL":
+        raise TransactionError("Payment was cancelled")
     time.sleep(2)
     elapsed += 2
 else:
-    print("Timeout waiting for confirmation")
+    raise TimeoutError("Customer didn't confirm in time")
 ```
-
-**What happens:**
-- Your app polls ATH Móvil API every 2 seconds
-- Customer sees the payment request in their app
-- Customer approves or rejects
-- Status changes to `CONFIRM` when approved
-
-!!! tip "Polling Best Practices"
-    - Use 2-second intervals (don't poll too frequently)
-    - Set reasonable timeout (5-10 minutes typical)
-    - Always cancel on timeout to clean up
 
 ### Step 3: Authorize the Payment
 
-Once confirmed, you must authorize to finalize:
+Once confirmed, authorize within 10 minutes to finalize:
 
 ```python
-# Authorize completes the payment
 result = client.authorize_payment(payment.data.ecommerce_id)
 
 print(f"Payment completed!")
 print(f"Reference number: {result.data.reference_number}")
 print(f"Total: ${result.data.total}")
-print(f"Status: {result.data.status}")  # "COMPLETED"
+print(f"Status: {result.data.ecommerce_status}")  # "COMPLETED"
 ```
 
 **What happens:**
@@ -131,9 +121,6 @@ print(f"Status: {result.data.status}")  # "COMPLETED"
 - You receive a `reference_number` for your records
 - Status changes to `COMPLETED`
 - Customer receives confirmation
-
-!!! warning "Must Authorize Within 10 Minutes"
-    After customer confirms, you have ~10 minutes to authorize before the payment expires.
 
 ### Step 4: Error Handling
 
@@ -153,27 +140,16 @@ try:
     payment = client.create_payment(
         total="5.00",
         phone_number="7875551234",
-        items=[
-            {
-                "name": "Product Name",
-                "description": "Product Description",
-                "quantity": "1",
-                "price": "5.00",
-            }
-        ],
+        items=[{
+            "name": "Product Name",
+            "description": "Product Description",
+            "quantity": "1",
+            "price": "5.00",
+        }],
     )
 
     # Wait for confirmation
-    try:
-        confirmed = client.wait_for_confirmation(
-            payment.data.ecommerce_id,
-            max_attempts=150
-        )
-    except TimeoutError:
-        # Customer didn't confirm, clean up
-        client.cancel_payment(payment.data.ecommerce_id)
-        print("Payment cancelled due to timeout")
-        return
+    client.wait_for_confirmation(payment.data.ecommerce_id)
 
     # Authorize
     result = client.authorize_payment(payment.data.ecommerce_id)
@@ -183,6 +159,9 @@ except ValidationError as e:
     print(f"Invalid data: {e}")
 except AuthenticationError as e:
     print(f"Authentication failed: {e}")
+except TimeoutError as e:
+    print(f"Payment timed out: {e}")
+    client.cancel_payment(payment.data.ecommerce_id)
 except TransactionError as e:
     print(f"Transaction error: {e}")
 finally:
@@ -194,47 +173,32 @@ finally:
 Here's a full production-ready payment flow:
 
 ```python
-from athm import ATHMovilClient, TimeoutError, TransactionError
+from athm import ATHMovilClient, TransactionError, TimeoutError
 import os
 
-def process_payment(amount: str, phone: str, order_id: str) -> str | None:
-    """
-    Process an ATH Móvil payment.
-
-    Returns reference_number on success, None on failure.
-    """
+def process_payment(amount: str, phone_number: str, order_id: str) -> str | None:
+    """Process an ATH Móvil payment. Returns reference_number on success."""
     client = ATHMovilClient(public_token=os.getenv("ATHM_PUBLIC_TOKEN"))
 
     try:
         # 1. Create payment
         payment = client.create_payment(
             total=amount,
-            phone_number=phone,
+            phone_number=phone_number,
             metadata1=f"Order {order_id}",
-            items=[
-                {
-                    "name": "Order Item",
-                    "description": f"Order {order_id}",
-                    "quantity": "1",
-                    "price": amount,
-                }
-            ],
+            items=[{
+                "name": "Order Item",
+                "description": f"Order {order_id}",
+                "quantity": "1",
+                "price": amount,
+            }],
         )
 
         print(f"Payment created: {payment.data.ecommerce_id}")
-        print(f"Waiting for customer {phone} to confirm...")
+        print(f"Waiting for customer {phone_number} to confirm...")
 
-        # 2. Wait for customer confirmation (5 minute timeout)
-        try:
-            client.wait_for_confirmation(
-                payment.data.ecommerce_id,
-                polling_interval=2.0,
-                max_attempts=150  # 5 minutes
-            )
-        except TimeoutError:
-            print("Customer didn't confirm in time, cancelling...")
-            client.cancel_payment(payment.data.ecommerce_id)
-            return None
+        # 2. Wait for confirmation
+        client.wait_for_confirmation(payment.data.ecommerce_id, timeout=300)
 
         # 3. Authorize payment
         result = client.authorize_payment(payment.data.ecommerce_id)
@@ -245,6 +209,10 @@ def process_payment(amount: str, phone: str, order_id: str) -> str | None:
 
         return result.data.reference_number
 
+    except TimeoutError:
+        print("Customer didn't confirm in time, cancelling...")
+        client.cancel_payment(payment.data.ecommerce_id)
+        return None
     except TransactionError as e:
         print(f"Transaction failed: {e}")
         return None
@@ -258,7 +226,7 @@ def process_payment(amount: str, phone: str, order_id: str) -> str | None:
 if __name__ == "__main__":
     ref = process_payment(
         amount="5.00",
-        phone="7875551234",
+        phone_number="7875551234",
         order_id="ORD-12345"
     )
 
@@ -267,44 +235,6 @@ if __name__ == "__main__":
     else:
         print("Payment failed")
 ```
-
-## Convenience Method
-
-For simple cases, use `process_complete_payment()` which combines all steps:
-
-```python
-from athm import ATHMovilClient
-
-client = ATHMovilClient(public_token=os.getenv("ATHM_PUBLIC_TOKEN"))
-
-try:
-    # Does create + wait + authorize in one call
-    result = client.process_complete_payment(
-        total="5.00",
-        phone_number="7875551234",
-        items=[
-            {
-                "name": "Product Name",
-                "description": "Product Description",
-                "quantity": "1",
-                "price": "5.00",
-            }
-        ],
-        polling_interval=2.0,
-        max_wait_time=300.0  # 5 minutes
-    )
-
-    print(f"Complete! Reference: {result.data.reference_number}")
-
-except Exception as e:
-    print(f"Payment failed: {e}")
-finally:
-    client.close()
-```
-
-!!! tip "When to Use process_complete_payment()"
-    - **Use it for**: Simple flows, CLI tools, scripts
-    - **Avoid it for**: Web apps (blocks thread), complex error handling, custom UX
 
 ## Phone Number Confirmation
 
@@ -325,7 +255,7 @@ client.update_phone_number(
     phone_number="7875559999"
 )
 
-# Now wait for confirmation on the new number
+# Wait for confirmation on the new number
 client.wait_for_confirmation(payment.data.ecommerce_id)
 ```
 
@@ -362,7 +292,7 @@ return {"payment_id": payment.data.ecommerce_id}
 
 # In background worker
 def check_payment(ecommerce_id):
-    result = client.wait_for_confirmation(ecommerce_id)
+    client.wait_for_confirmation(ecommerce_id)
     client.authorize_payment(ecommerce_id)
     # Update your database, send email, etc.
 ```

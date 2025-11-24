@@ -26,7 +26,7 @@ client = ATHMovilClient(public_token="YOUR_PUBLIC_TOKEN")
 # Create payment
 payment = client.create_payment(
     total="5.00",
-    phone_number="7875551234",  # Customer's phone number with ATH Móvil account
+    phone_number="7875551234",
     items=[
         {
             "name": "Product Name",
@@ -37,10 +37,10 @@ payment = client.create_payment(
     ],
 )
 
-# Wait for customer to confirm on their phone
-confirmed = client.wait_for_confirmation(payment.data.ecommerce_id)
+# Wait for customer confirmation
+client.wait_for_confirmation(payment.data.ecommerce_id)
 
-# Authorize the payment
+# Authorize payment
 result = client.authorize_payment(payment.data.ecommerce_id)
 print(f"Payment completed! Reference: {result.data.reference_number}")
 ```

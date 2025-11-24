@@ -11,25 +11,9 @@
 
 ## Prerequisites
 
-Before installing the library, ensure you have:
-
-### Required Accounts
-
-1. **ATH Business Account**
-   - Active merchant account with verified business information
-   - Registered payment card linked to the business account
-   - Access to ATH Business app or web portal for API credential management
-
-2. **ATH Móvil Personal Account**
-   - Active personal ATH Móvil account for testing
-   - Must use a **different payment card** than your business account
-   - Cannot use the same card for customer and merchant transactions (will trigger error BTRA_0003)
-
-### Technical Requirements
-
 - Python 3.10 or higher
-- Active internet connection (all API calls require HTTPS)
-- Secure environment for storing API credentials
+- **ATH Business account** with API credentials
+- **ATH Móvil personal account** for testing (must use different payment card than business account)
 
 ## Install the Package
 
@@ -80,21 +64,8 @@ Once your account is verified:
 | **Public Token** | All payment operations | Create, check, authorize, cancel payments |
 | **Private Token** | Refunds only | Process refunds on completed payments |
 
-### Token Lifecycle and Expiry
-
 !!! warning "Token Expiration"
-    API tokens can expire after a period specified by ATH Business. When a token expires:
-
-    - You will receive error `token.expired` or `BTRA_0401`/`BTRA_0402`/`BTRA_0403`
-    - You must generate new tokens from the ATH Business portal
-    - No automatic token refresh is available
-
-**Best practices:**
-
-- Monitor for authentication errors in your application logs
-- Have a process to quickly rotate expired tokens
-- Store tokens securely using environment variables or secret managers
-- Never hardcode tokens in your source code
+    Tokens can expire. When you receive `token.expired` or `BTRA_0401`/`BTRA_0402`/`BTRA_0403` errors, generate new tokens from the ATH Business portal.
 
 ## Configure Environment Variables
 
@@ -128,30 +99,22 @@ client = ATHMovilClient(
 
 ## Test Your Setup
 
-Run this quick test to verify everything is configured correctly:
-
 ```python
 from athm import ATHMovilClient
 import os
 
-# Initialize client
 client = ATHMovilClient(public_token=os.getenv("ATHM_PUBLIC_TOKEN"))
 
-# Create a test payment (won't charge anyone)
 try:
     payment = client.create_payment(
         total="1.00",
-        phone_number="7875551234",  # Your phone number with ATH Móvil account
-        subtotal="1.00",
-        tax="0.00",
-        metadata1="Installation Test"
+        phone_number="7875551234",
+        items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "1.00"}]
     )
     print(f"Success! Payment ID: {payment.data.ecommerce_id}")
 
-    # Cancel the test payment
     client.cancel_payment(payment.data.ecommerce_id)
     print("Test payment cancelled")
-
 except Exception as e:
     print(f"Error: {e}")
 finally:
