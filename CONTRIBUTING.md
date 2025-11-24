@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing to the ATH Móvil unofficial library!
+Thank you for your interest in contributing to the ATH Móvil Python unofficial library!
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Thank you for your interest in contributing to the ATH Móvil unofficial library
 
 ```bash
 # Fork and clone the repo
-git clone https://github.com/your-username/athm-python.git
+git clone https://github.com/django-athm/athm-python.git
 cd athm-python
 
 # Install uv if needed
