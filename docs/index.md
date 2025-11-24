@@ -15,6 +15,12 @@ ATH Móvil is Puerto Rico's leading mobile payment platform. This library provid
 pip install athm
 ```
 
+or
+
+```bash
+uv add athm
+```
+
 ### Example
 
 ```python
@@ -59,7 +65,6 @@ print(f"Payment completed! Reference: {result.data.reference_number}")
 - **[Payment Flow Guide](guide.md)** - Complete walkthrough with diagrams
 - **[API Reference](api-reference.md)** - Client methods and models
 - **[Error Handling](errors.md)** - All error codes and solutions
-- **[Advanced Usage](advanced.md)** - Refunds, testing, and customization
 
 ## Requirements
 

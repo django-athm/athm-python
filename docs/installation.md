@@ -46,13 +46,13 @@ To use the ATH Móvil API, you need API tokens from ATH Business.
 2. Create an account or log in
 3. Complete merchant verification
 
-### 2. Generate API Tokens
+### 2. Obtain API Tokens
 
 Once your account is verified:
 
 1. Navigate to **Settings** > **API Credentials**
-2. Generate your **Public Token** (required for all operations)
-3. Generate your **Private Token** (required for refunds only)
+2. Obtain your **Public Token** (required for all operations)
+3. Obtain your **Private Token** (required for refunds only)
 
 !!! warning "Keep Tokens Secret"
     Never commit your tokens to version control. Always use environment variables or secure secret management.

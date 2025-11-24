@@ -291,19 +291,25 @@ print(status.data.daily_transaction_id)
 
 **TransactionData fields:**
 
+- `ecommerce_status` (TransactionStatus): Payment status (OPEN, CONFIRM, COMPLETED, CANCEL)
+- `ecommerce_id` (str): Unique payment identifier
 - `reference_number` (str | None): Transaction reference (after completion)
-- `daily_transaction_id` (int | None): Daily transaction ID
-- `name` (str | None): Customer name
-- `phone_number` (str | None): Customer phone
+- `business_customer_id` (str | None): Business customer identifier
+- `transaction_date` (datetime | None): Transaction date and time
+- `daily_transaction_id` (str | None): Daily transaction ID
+- `business_name` (str | None): Business name
+- `business_path` (str | None): Business path
+- `industry` (str | None): Industry type
+- `sub_total` (Decimal | None): Subtotal amount
+- `tax` (Decimal | None): Tax amount
+- `total` (Decimal | None): Total amount
+- `fee` (Decimal | None): Processing fee
+- `net_amount` (Decimal | None): Net amount after fee
+- `total_refunded_amount` (Decimal | None): Total refunded amount
 - `metadata1` (str | None): Custom metadata
 - `metadata2` (str | None): Custom metadata
-- `tax` (str | None): Tax amount
-- `subtotal` (str | None): Subtotal
-- `total` (str | None): Total amount
-- `fee` (str | None): Processing fee
-- `net_amount` (str | None): Net amount after fee
-- `total_refunded` (str | None): Total refunded amount
 - `items` (list[PaymentItem] | None): Payment items
+- `is_non_profit` (bool | None): Non-profit organization flag
 
 ---
 
@@ -618,4 +624,3 @@ client = ATHMovilClient(
 
 - **[Payment Flow Guide](guide.md)** - Complete walkthrough
 - **[Error Handling](errors.md)** - All error codes
-- **[Advanced Usage](advanced.md)** - Refunds and testing

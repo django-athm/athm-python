@@ -63,7 +63,5 @@ nav:
   - Reference:
     - API Reference: api-reference.md
     - Error Handling: errors.md
-  - Advanced:
-    - Advanced Usage: advanced.md
 
 copyright: Copyright &copy; 2025 - Raúl Negrón-Otero

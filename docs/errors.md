@@ -78,7 +78,7 @@ except ATHMovilError as e:
     print(f"Message: {e}")
     print(f"Error code: {e.error_code}")  # May be None
     print(f"Status code: {e.status_code}")  # May be None
-    print(f"Response: {e.response}")  # Full API response
+    print(f"Response: {e.response_data}")  # Full API response
 ```
 
 ## Complete Error Code Reference
@@ -300,7 +300,7 @@ def create_payment_with_retry(
                 phone_number=phone_number,
                 subtotal=amount,
                 tax="0.00",
-                items=[]  # Required field
+                items=[{"name": "Item", "description": "Description", "quantity": "1", "price": amount}]
             )
             return payment.data.ecommerce_id
 
@@ -584,4 +584,3 @@ except TransactionError as e:
 
 - **[API Reference](api-reference.md)** - Full method documentation
 - **[Payment Flow Guide](guide.md)** - Complete payment walkthrough
-- **[Advanced Usage](advanced.md)** - Refunds, testing, production patterns

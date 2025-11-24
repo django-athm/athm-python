@@ -56,6 +56,7 @@ print("Customer will receive a push notification")
 ```
 
 **What happens:**
+
 - Payment is created with `OPEN` status
 - Customer receives push notification on their phone
 - You get an `ecommerce_id` to track this payment
@@ -76,32 +77,11 @@ except TransactionError:
 ```
 
 **What happens:**
+
 - Customer receives push notification on their phone
 - Your app polls ATH Móvil API every 2 seconds
 - Customer opens app and approves or rejects
 - Status changes to `CONFIRM` when approved
-
-**Manual polling (advanced):**
-
-For custom polling logic or async frameworks:
-
-```python
-import time
-
-max_wait = 300
-elapsed = 0
-
-while elapsed < max_wait:
-    status = client.find_payment(payment.data.ecommerce_id)
-    if status.data.ecommerce_status == "CONFIRM":
-        break
-    elif status.data.ecommerce_status == "CANCEL":
-        raise TransactionError("Payment was cancelled")
-    time.sleep(2)
-    elapsed += 2
-else:
-    raise TimeoutError("Customer didn't confirm in time")
-```
 
 ### Step 3: Authorize the Payment
 
@@ -117,6 +97,7 @@ print(f"Status: {result.data.ecommerce_status}")  # "COMPLETED"
 ```
 
 **What happens:**
+
 - Payment is finalized and funds are transferred
 - You receive a `reference_number` for your records
 - Status changes to `COMPLETED`
@@ -236,14 +217,6 @@ if __name__ == "__main__":
         print("Payment failed")
 ```
 
-## Phone Number Confirmation
-
-ATH Móvil sends push notifications to the customer's phone. The phone number must:
-
-- Be 10 digits
-- Be registered with ATH Móvil
-- Match the customer's ATH Móvil account
-
 ### Update Phone Number
 
 If the customer provides a different phone number:
@@ -259,46 +232,7 @@ client.update_phone_number(
 client.wait_for_confirmation(payment.data.ecommerce_id)
 ```
 
-## Common Patterns
-
-### Pattern: Webhook Alternative
-
-If you don't want to poll, implement a customer redirect:
-
-```python
-# 1. Create payment
-payment = client.create_payment(...)
-
-# 2. Show customer a page with payment.data.ecommerce_id
-#    Customer opens ATH Móvil app and confirms
-
-# 3. Customer returns to your site, you check status
-status = client.find_payment(payment.data.ecommerce_id)
-
-if status.data.status == "CONFIRM":
-    # Authorize it
-    result = client.authorize_payment(payment.data.ecommerce_id)
-```
-
-### Pattern: Background Job
-
-For async frameworks:
-
-```python
-# In request handler
-payment = client.create_payment(...)
-enqueue_job("check_payment", payment.data.ecommerce_id)
-return {"payment_id": payment.data.ecommerce_id}
-
-# In background worker
-def check_payment(ecommerce_id):
-    client.wait_for_confirmation(ecommerce_id)
-    client.authorize_payment(ecommerce_id)
-    # Update your database, send email, etc.
-```
-
 ## Next Steps
 
 - **[API Reference](api-reference.md)** - Detailed method documentation
 - **[Error Handling](errors.md)** - All error codes and recovery
-- **[Advanced Usage](advanced.md)** - Refunds, testing, customization

@@ -115,7 +115,7 @@ with ATHMovilClient(public_token="token") as client:
 ## Documentation
 
 - [Full Documentation](https://athm-python.readthedocs.io)
-- [API Reference](https://athm-python.readthedocs.io/en/latest/api/)
+- [API Reference](https://athm-python.readthedocs.io/en/latest/api-reference/)
 
 ## Development
 
