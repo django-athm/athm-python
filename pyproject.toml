@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "athm"
-version = "0.2.1"
+version = "0.2.0"
 description = "A modern Python library for the ATH Móvil payment API"
 readme = "README.md"
 license = { text = "MIT" }
@@ -195,7 +195,7 @@ ignore_errors = true
 # Commitizen configuration
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.2.1"
+version = "0.3.0"
 version_files = [
     "athm/__init__.py:__version__",
     "pyproject.toml:version",
