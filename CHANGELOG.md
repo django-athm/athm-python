@@ -12,6 +12,20 @@ _Initial release - see Unreleased section above for features_
 [0.1.0]: https://github.com/django-athm/athm-python/releases/tag/v0.1.0
 
 
+## v0.4.0 (2025-12-01)
+
+### Feat
+
+- **webhooks**: add webhook support for transaction notifications
+
+### Fix
+
+- sync version to 0.3.0 across all version files
+
+### Refactor
+
+- simplify models and consolidate error code mappings
+
 ## v0.3.0 (2025-11-24)
 
 ### Fix

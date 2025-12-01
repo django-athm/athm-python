@@ -33,7 +33,7 @@ from athm.webhooks import (
     parse_webhook,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Raúl Negrón-Otero"
 __email__ = "raul.esteban.negron@gmail.com"
 
