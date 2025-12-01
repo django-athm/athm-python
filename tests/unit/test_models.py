@@ -127,6 +127,8 @@ class TestPaymentRequest:
             publicToken="test_token",
             total="100.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="100.00")],
         )
         assert request.timeout == "600"
@@ -140,6 +142,8 @@ class TestPaymentRequest:
                 publicToken="test_token",
                 total="100.00",
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
             )
 
     def test_payment_amount_validation(self):
@@ -149,6 +153,8 @@ class TestPaymentRequest:
                 publicToken="test",
                 total="0.99",
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="0.99")],
             )
 
@@ -158,6 +164,8 @@ class TestPaymentRequest:
                 publicToken="test",
                 total="1500.01",
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="1500.01")],
             )
 
@@ -166,6 +174,8 @@ class TestPaymentRequest:
             publicToken="test",
             total="1.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="1.00")],
         )
         assert request_min.total == "1.00"
@@ -174,6 +184,8 @@ class TestPaymentRequest:
             publicToken="test",
             total="1500.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="1500.00")],
         )
         assert request_max.total == "1500.00"
@@ -186,6 +198,8 @@ class TestPaymentRequest:
             subtotal="4.50",
             tax="0.50",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[
                 PaymentItem(name="Test", description="Test", quantity="1", price="4.50", tax="0.50")
             ],
@@ -201,6 +215,8 @@ class TestPaymentRequest:
             subtotal="10.00",
             tax="0.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="10.00")],
         )
         assert request_zero_tax.tax == "0.00"
@@ -212,6 +228,8 @@ class TestPaymentRequest:
             subtotal="0.75",
             tax="0.50",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[
                 PaymentItem(name="Test", description="Test", quantity="1", price="0.75", tax="0.50")
             ],
@@ -225,6 +243,8 @@ class TestPaymentRequest:
                 total="5.00",
                 tax="-0.50",
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="5.00")],
             )
 
@@ -235,6 +255,8 @@ class TestPaymentRequest:
             total="10.00",
             phoneNumber="7875551234",
             timeout="300",
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="10.00")],
         )
         assert request.timeout == "300"
@@ -246,6 +268,8 @@ class TestPaymentRequest:
                 total="10.00",
                 phoneNumber="7875551234",
                 timeout="119",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="10.00")],
             )
 
@@ -255,6 +279,8 @@ class TestPaymentRequest:
             total="10.00",
             phoneNumber="7875551234",
             timeout="5000",  # Real API accepts this
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="10.00")],
         )
         assert request_high.timeout == "5000"
@@ -265,6 +291,8 @@ class TestPaymentRequest:
             publicToken="test",
             total="10.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="10.00")],
         )
         assert request.phone_number == "7875551234"
@@ -283,6 +311,8 @@ class TestPaymentRequest:
                     publicToken="test",
                     total="10.00",
                     phoneNumber=phone,
+                    metadata1="Test",
+                    metadata2="Test",
                     items=[
                         PaymentItem(name="Test", description="Test", quantity="1", price="10.00")
                     ],
@@ -318,6 +348,8 @@ class TestPaymentRequest:
             subtotal="90.00",
             tax="10.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[
                 PaymentItem(
                     name="Test", description="Test", quantity="1", price="90.00", tax="10.00"
@@ -334,6 +366,8 @@ class TestPaymentRequest:
                 subtotal="80.00",
                 tax="10.00",  # 80 + 10 != 100
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[
                     PaymentItem(
                         name="Test", description="Test", quantity="1", price="80.00", tax="10.00"
@@ -361,6 +395,8 @@ class TestPaymentRequest:
             publicToken="test",
             total="100.00",
             phoneNumber="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=items,
         )
         assert len(request.items) == 2
@@ -481,7 +517,7 @@ class TestRefundModels:
                     "refundedAmount": 50.00,
                     "date": str(int(datetime.now().timestamp())),
                     "referenceNumber": "REFUND123",
-                    "dailyTransactionID": "0107",
+                    "dailyTransactionId": "0107",
                     "name": "John Doe",
                     "phoneNumber": "(787) 555-1234",
                     "email": "john@example.com",
@@ -491,7 +527,7 @@ class TestRefundModels:
                     "status": "COMPLETED",
                     "date": str(int(datetime.now().timestamp())),
                     "referenceNumber": "REF123",
-                    "dailyTransactionID": "0106",
+                    "dailyTransactionId": "0106",
                     "name": "John Doe",
                     "phoneNumber": "(787) 555-1234",
                     "email": "john@example.com",
@@ -586,6 +622,8 @@ class TestEdgeCases:
             phoneNumber="7875551234",
             subtotal=None,
             tax=None,
+            metadata1="Test",
+            metadata2="Test",
             items=[PaymentItem(name="Test", description="Test", quantity="1", price="100.00")],
         )
         assert request.subtotal is None
@@ -597,6 +635,8 @@ class TestEdgeCases:
                 publicToken="test",
                 total="0.50",
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="0.50")],
             )
 
@@ -606,6 +646,8 @@ class TestEdgeCases:
                 publicToken="test",
                 total="not_a_number",
                 phoneNumber="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="10.00")],
             )
 
@@ -616,6 +658,8 @@ class TestEdgeCases:
                 total="100.00",
                 phoneNumber="7875551234",
                 timeout="not_a_number",
+                metadata1="Test",
+                metadata2="Test",
                 items=[PaymentItem(name="Test", description="Test", quantity="1", price="100.00")],
             )
 
@@ -651,11 +695,11 @@ class TestEdgeCases:
             "status": "success",
             "data": {
                 "refund": {
-                    "dailyTransactionID": 2,  # API returns this as int
+                    "dailyTransactionId": 2,  # API returns this as int
                     "refundedAmount": 50.00,
                 },
                 "originalTransaction": {
-                    "dailyTransactionID": 1,  # API returns this as int
+                    "dailyTransactionId": 1,  # API returns this as int
                     "total": 100.00,
                 },
             },

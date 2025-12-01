@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from pytest_httpx import HTTPXMock
 
 from athm.client import ATHMovilClient
 from athm.models import TransactionStatus
@@ -137,7 +136,7 @@ def mock_refund_response() -> dict[str, Any]:
                 "refundedAmount": 50.00,
                 "date": str(int(datetime.now().timestamp())),
                 "referenceNumber": "REFUND123",
-                "dailyTransactionID": 2,  # API returns as int
+                "dailyTransactionId": 2,  # API returns as int
                 "name": "John Doe",
                 "phoneNumber": "(787) 555-1234",
                 "email": "john@example.com",
@@ -147,7 +146,7 @@ def mock_refund_response() -> dict[str, Any]:
                 "status": "COMPLETED",
                 "date": str(int(datetime.now().timestamp())),
                 "referenceNumber": SAMPLE_REFERENCE_NUMBER,
-                "dailyTransactionID": 1,  # API returns as int
+                "dailyTransactionId": 1,  # API returns as int
                 "name": "John Doe",
                 "phoneNumber": "(787) 555-1234",
                 "email": "john@example.com",
@@ -231,8 +230,3 @@ def create_mock_transaction(status: TransactionStatus = TransactionStatus.OPEN) 
             "isNonProfit": False,
         },
     }
-
-
-@pytest.fixture
-def httpx_mock_client(httpx_mock: HTTPXMock) -> HTTPXMock:
-    return httpx_mock

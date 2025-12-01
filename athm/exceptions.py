@@ -2,7 +2,12 @@
 
 from typing import Any
 
-from athm.constants import ErrorCode
+from athm.constants import (
+    AUTH_ERROR_CODES,
+    TRANSACTION_ERROR_CODES,
+    VALIDATION_ERROR_CODES,
+    ErrorCode,
+)
 
 
 class ATHMovilError(Exception):
@@ -75,15 +80,7 @@ class InternalServerError(ATHMovilError):
 def create_exception_from_response(
     response_data: dict[str, Any], status_code: int
 ) -> ATHMovilError:
-    """Create appropriate exception from API response.
-
-    Args:
-        response_data: Response data from API
-        status_code: HTTP status code
-
-    Returns:
-        Appropriate exception instance
-    """
+    """Create appropriate exception from API response."""
     message = response_data.get("message", "Unknown error")
     error_code = response_data.get("errorcode")
 
@@ -94,55 +91,18 @@ def create_exception_from_response(
         "response_data": response_data,
     }
 
-    # Check error code first (more specific than status code)
     if error_code:
-        # Authentication errors
-        auth_codes = (
-            ErrorCode.TOKEN_INVALID_HEADER.value,
-            ErrorCode.TOKEN_EXPIRED.value,
-            ErrorCode.BTRA_0401.value,
-            ErrorCode.BTRA_0402.value,
-            ErrorCode.BTRA_0403.value,
-            ErrorCode.BTRA_0017.value,
-        )
-        if error_code in auth_codes:
+        if error_code in AUTH_ERROR_CODES:
             return AuthenticationError(**kwargs)
-
-        # Validation errors
-        validation_codes = (
-            ErrorCode.BTRA_0001.value,
-            ErrorCode.BTRA_0004.value,
-            ErrorCode.BTRA_0006.value,
-            ErrorCode.BTRA_0013.value,
-            ErrorCode.BTRA_0038.value,
-            ErrorCode.BTRA_0040.value,
-            ErrorCode.BTRA_0003.value,
-            ErrorCode.BTRA_0009.value,
-            ErrorCode.BTRA_0010.value,
-        )
-        if error_code in validation_codes:
+        if error_code in VALIDATION_ERROR_CODES:
             return ValidationError(**kwargs)
-
-        # Transaction errors
-        transaction_codes = (
-            ErrorCode.BTRA_0007.value,
-            ErrorCode.BTRA_0031.value,
-            ErrorCode.BTRA_0032.value,
-            ErrorCode.BTRA_0037.value,
-            ErrorCode.BTRA_0039.value,
-        )
-        if error_code in transaction_codes:
+        if error_code in TRANSACTION_ERROR_CODES:
             return TransactionError(**kwargs)
-
-        # Network errors
         if error_code == ErrorCode.BTRA_9998.value:
             return NetworkError(**kwargs)
-
-        # Internal server errors
         if error_code == ErrorCode.BTRA_9999.value:
             return InternalServerError(**kwargs)
 
-    # Fall back to status code
     if status_code == 401:
         return AuthenticationError(**kwargs)
     if status_code == 400:
@@ -152,5 +112,4 @@ def create_exception_from_response(
     if status_code >= 500:
         return InternalServerError(**kwargs)
 
-    # Default to base exception
     return ATHMovilError(**kwargs)

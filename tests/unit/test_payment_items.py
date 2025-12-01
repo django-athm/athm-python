@@ -97,7 +97,7 @@ class TestPaymentItemValidation:
             )
 
         # Non-numeric quantity
-        with pytest.raises(PydanticValidationError, match="Invalid quantity"):
+        with pytest.raises(PydanticValidationError, match="invalid literal"):
             PaymentItem(
                 name="Product",
                 description="Description",
@@ -185,6 +185,8 @@ class TestPaymentRequestWithItems:
             tax="7.50",
             subtotal="100.00",
             phone_number="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=items,
         )
 
@@ -198,6 +200,8 @@ class TestPaymentRequestWithItems:
             public_token=public_token,
             total="10.00",
             phone_number="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[],
         )
         assert request.items == []
@@ -209,6 +213,8 @@ class TestPaymentRequestWithItems:
                 public_token=public_token,
                 total="10.00",
                 phone_number="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 # items field missing
             )
 
@@ -219,6 +225,8 @@ class TestPaymentRequestWithItems:
                 public_token=public_token,
                 total="10.00",
                 phone_number="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items="not a list",  # Invalid type
             )
 
@@ -230,6 +238,8 @@ class TestPaymentRequestWithItems:
             tax="5.00",
             subtotal="50.00",
             phone_number="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[
                 {
                     "name": "Product",
@@ -274,6 +284,8 @@ class TestClientWithItems:
         response = client.create_payment(
             total="100.00",
             phone_number="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=items,
         )
 
@@ -301,6 +313,8 @@ class TestClientWithItems:
         response = client.create_payment(
             total="10.00",
             phone_number="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[],  # Empty list is valid
         )
 
@@ -331,5 +345,7 @@ class TestClientWithItems:
             client.create_payment(
                 total="10.00",
                 phone_number="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=items,
             )

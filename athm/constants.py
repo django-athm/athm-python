@@ -58,3 +58,39 @@ DEFAULT_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
 }
+
+# Error code categories for exception mapping
+AUTH_ERROR_CODES = frozenset(
+    {
+        ErrorCode.TOKEN_INVALID_HEADER.value,
+        ErrorCode.TOKEN_EXPIRED.value,
+        ErrorCode.BTRA_0401.value,
+        ErrorCode.BTRA_0402.value,
+        ErrorCode.BTRA_0403.value,
+        ErrorCode.BTRA_0017.value,
+    }
+)
+
+VALIDATION_ERROR_CODES = frozenset(
+    {
+        ErrorCode.BTRA_0001.value,
+        ErrorCode.BTRA_0004.value,
+        ErrorCode.BTRA_0006.value,
+        ErrorCode.BTRA_0013.value,
+        ErrorCode.BTRA_0038.value,
+        ErrorCode.BTRA_0040.value,
+        ErrorCode.BTRA_0003.value,
+        ErrorCode.BTRA_0009.value,
+        ErrorCode.BTRA_0010.value,
+    }
+)
+
+TRANSACTION_ERROR_CODES = frozenset(
+    {
+        ErrorCode.BTRA_0007.value,
+        ErrorCode.BTRA_0031.value,
+        ErrorCode.BTRA_0032.value,
+        ErrorCode.BTRA_0037.value,
+        ErrorCode.BTRA_0039.value,
+    }
+)

@@ -39,7 +39,8 @@ uv add athm
 ```python
 from athm import ATHMovilClient
 
-client = ATHMovilClient(public_token="your_public_token")
+# Note: private token is only required for processing refunds
+client = ATHMovilClient(public_token="your_public_token", private_token="your_private_token")
 
 payment = client.create_payment(
     total="5.00",
@@ -59,8 +60,14 @@ payment = client.create_payment(
 client.wait_for_confirmation(payment.data.ecommerce_id)
 
 # Authorize payment
-result = client.authorize_payment(payment.data.ecommerce_id)
-print(f"Payment completed: {result.data.reference_number}")
+payment_result = client.authorize_payment(payment.data.ecommerce_id)
+print(f"Payment completed: {payment_result.data.reference_number}")
+
+# Refund the payment (requires a client initialized with private token)
+refund_result = client.refund_payment(
+    reference_number=payment_result.data.reference_number,,
+    amount="5.00",
+)
 ```
 
 ## Configuration
@@ -79,9 +86,9 @@ client = ATHMovilClient(
 - Create payments
 - Check payment status
 - Authorize confirmed payments
-- Update phone numbers
 - Cancel payments
 - Process full and partial refunds
+- Update phone numbers
 
 ## Error Handling
 

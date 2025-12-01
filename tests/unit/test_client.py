@@ -80,6 +80,8 @@ class TestPaymentOperations:
         response = client.create_payment(
             total="5.00",
             phone_number="7875551234",
+            metadata1="Test",
+            metadata2="Test",
             items=[
                 {
                     "name": "Test",
@@ -121,6 +123,8 @@ class TestPaymentOperations:
             client.create_payment(
                 total="5.00",
                 phone_number="7875551234",
+                metadata1="Test",
+                metadata2="Test",
                 items=[{"name": "Test", "description": "Test", "quantity": "1", "price": "5.00"}],
             )
 

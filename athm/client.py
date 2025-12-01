@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 from pydantic import ValidationError as PydanticValidationError
+from typing_extensions import Self
 
 from athm.constants import BASE_URL, DEFAULT_HEADERS, ENDPOINTS, MAX_RETRIES, REQUEST_TIMEOUT
 from athm.exceptions import (
@@ -29,7 +30,6 @@ from athm.models import (
     TransactionStatus,
     UpdatePhoneRequest,
 )
-from athm.types import Self, Timeout
 
 
 class ATHMovilClient:
@@ -51,7 +51,7 @@ class ATHMovilClient:
         public_token: str,
         private_token: str | None = None,
         base_url: str = BASE_URL,
-        timeout: Timeout = REQUEST_TIMEOUT,
+        timeout: float | int | None = REQUEST_TIMEOUT,
         max_retries: int = MAX_RETRIES,
         verify_ssl: bool = True,
     ) -> None:
@@ -81,60 +81,39 @@ class ATHMovilClient:
         self._sync_client: httpx.Client | None = None
         self._auth_tokens: dict[str, str] = {}
 
-    def __enter__(self) -> Self:
-        """Enter context manager and initialize HTTP client."""
-        self._sync_client = httpx.Client(
+    def _create_client(self) -> httpx.Client:
+        return httpx.Client(
             base_url=self.base_url,
             headers=DEFAULT_HEADERS,
             timeout=self.timeout,
             verify=self.verify_ssl,
         )
+
+    def __enter__(self) -> Self:
+        """Enter context manager."""
+        self._sync_client = self._create_client()
         return self
 
     def __exit__(self, *args: Any) -> None:
-        """Exit context manager and cleanup HTTP client."""
+        """Exit context manager."""
         if self._sync_client:
             self._sync_client.close()
             self._sync_client = None
 
     @property
     def sync_client(self) -> httpx.Client:
-        """Get or lazily initialize the synchronous HTTP client."""
+        """Lazily initialize and return the HTTP client."""
         if self._sync_client is None:
-            self._sync_client = httpx.Client(
-                base_url=self.base_url,
-                headers=DEFAULT_HEADERS,
-                timeout=self.timeout,
-                verify=self.verify_ssl,
-            )
+            self._sync_client = self._create_client()
         return self._sync_client
 
     def _prepare_headers(self, auth_token: str | None = None) -> dict[str, str]:
-        """Prepare request headers.
-
-        Args:
-            auth_token: Optional JWT auth token
-
-        Returns:
-            Headers dictionary
-        """
         headers = DEFAULT_HEADERS.copy()
         if auth_token:
             headers["Authorization"] = f"Bearer {auth_token}"
         return headers
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
-        """Handle API response and raise appropriate exceptions.
-
-        Args:
-            response: HTTP response
-
-        Returns:
-            Parsed JSON response
-
-        Raises:
-            ATHMovilError: On API errors
-        """
         try:
             data: dict[str, Any] = response.json()
         except json.JSONDecodeError as e:
@@ -156,21 +135,6 @@ class ATHMovilClient:
         headers: dict[str, str] | None = None,
         retries: int = 0,
     ) -> dict[str, Any]:
-        """Make synchronous HTTP request with retry logic.
-
-        Args:
-            method: HTTP method
-            endpoint: API endpoint
-            json_data: Request body
-            headers: Request headers
-            retries: Current retry count
-
-        Returns:
-            Response data
-
-        Raises:
-            ATHMovilError: On API errors
-        """
         headers = headers or self._prepare_headers()
 
         try:
@@ -460,22 +424,7 @@ class ATHMovilClient:
         )
 
     def close(self) -> None:
-        """Close HTTP client and cleanup resources.
-
-        This method should be called when you're done using the client,
-        or use the client as a context manager to ensure automatic cleanup.
-
-        Example:
-            >>> client = ATHMovilClient(public_token="token")
-            >>> try:
-            ...     client.create_payment(...)
-            ... finally:
-            ...     client.close()
-
-            Or use as context manager:
-            >>> with ATHMovilClient(public_token="token") as client:
-            ...     client.create_payment(...)
-        """
+        """Close HTTP client and cleanup resources."""
         if self._sync_client:
             self._sync_client.close()
             self._sync_client = None
