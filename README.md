@@ -2,6 +2,7 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/athm)
 [![Python Versions](https://img.shields.io/pypi/pyversions/athm.svg)](https://pypi.org/project/athm/)
+[![codecov](https://codecov.io/gh/django-athm/athm-python/graph/badge.svg?token=97F3WYLT3M)](https://codecov.io/gh/django-athm/athm-python)
 [![Read the Docs](https://img.shields.io/readthedocs/athm-python)](https://athm-python.readthedocs.io/en/latest/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/django-athm/athm-python/actions/workflows/test.yml/badge.svg)](https://github.com/django-athm/athm-python/actions/workflows/test.yml)
@@ -15,6 +16,7 @@ A modern, type-safe Python library for the ATH Móvil payment platform.
 ## Features
 
 - Full ATH Móvil Payment Button API support
+- Webhook support for real-time transaction notifications
 - Simple synchronous client
 - Strict type safety with mypy
 - Pydantic data validation
@@ -89,6 +91,8 @@ client = ATHMovilClient(
 - Cancel payments
 - Process full and partial refunds
 - Update phone numbers
+- Subscribe to webhook notifications
+- Parse and validate webhook payloads
 
 ## Error Handling
 

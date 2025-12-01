@@ -193,6 +193,147 @@ def mock_success_response() -> dict[str, Any]:
     }
 
 
+# Webhook payload fixtures based on ATH Movil webhook documentation
+# Ref: https://github.com/evertec/athmovil-webhooks
+
+
+@pytest.fixture
+def mock_webhook_payment_payload() -> dict[str, Any]:
+    """Standard payment webhook payload (uses string decimals)."""
+    return {
+        "transactionType": "payment",
+        "status": "completed",
+        "date": "2025-01-15 10:30:00",
+        "referenceNumber": "REF-2025-001234",
+        "dailyTransactionID": "12345",
+        "name": "John Doe",
+        "phoneNumber": "7875551234",
+        "email": "john@example.com",
+        "message": "Payment for order #123",
+        "total": "100.00",
+        "tax": "10.00",
+        "subtotal": "90.00",
+        "fee": "2.50",
+        "netAmount": "97.50",
+        "totalRefundedAmount": "0.00",
+        "metadata1": "Order #123",
+        "metadata2": "Customer: John Doe",
+        "items": [
+            {
+                "name": "Product 1",
+                "description": "Test product",
+                "quantity": "2",
+                "price": "45.00",
+                "tax": "5.00",
+                "metadata": "SKU123",
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def mock_webhook_ecommerce_completed_payload() -> dict[str, Any]:
+    """eCommerce completed webhook payload (uses numbers, different field names)."""
+    return {
+        "transactionType": "ECOMMERCE",
+        "status": "COMPLETED",
+        "date": "2025-01-15 10:30:00",
+        "transactionDate": "2025-01-15 10:25:00",
+        "referenceNumber": "REF-2025-001234",
+        "dailyTransactionId": "12345",
+        "ecommerceId": SAMPLE_ECOMMERCE_ID,
+        "businessName": "Test Business",
+        "name": "John Doe",
+        "phoneNumber": 7875551234,  # API sends as number for eCommerce
+        "email": "john@example.com",
+        "message": "",
+        "total": 100.00,  # Numbers for eCommerce
+        "tax": 10.00,
+        "subTotal": 90.00,  # Note: subTotal not subtotal
+        "fee": 2.50,
+        "netAmount": 97.50,
+        "totalRefundedAmount": 0.00,
+        "metadata1": "Order #123",
+        "metadata2": "Customer: John Doe",
+        "isNonProfit": False,
+        "referenceTransactionId": "TXN123456",
+        "items": [
+            {
+                "name": "Product 1",
+                "description": "Test product",
+                "quantity": 2,
+                "price": 45.00,
+                "tax": 5.00,
+                "sku": "SKU123",
+                "formattedPrice": "$45.00",
+                "metadata": "",
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def mock_webhook_ecommerce_cancelled_payload() -> dict[str, Any]:
+    """eCommerce cancelled webhook payload."""
+    return {
+        "transactionType": "ECOMMERCE",
+        "status": "CANCEL",  # Note: CANCEL not CANCELLED
+        "date": "2025-01-15 10:30:00",
+        "referenceNumber": "",
+        "dailyTransactionId": "",
+        "ecommerceId": SAMPLE_ECOMMERCE_ID,
+        "businessName": "Test Business",
+        "name": "",
+        "phoneNumber": "",
+        "email": "",
+        "message": "",
+        "total": 100.00,
+        "tax": 10.00,
+        "subTotal": 90.00,
+        "fee": 0,
+        "netAmount": 0,
+        "totalRefundedAmount": 0,
+        "metadata1": "Order #123",
+        "metadata2": "",
+        "isNonProfit": False,
+        "items": [],
+    }
+
+
+@pytest.fixture
+def mock_webhook_refund_payload() -> dict[str, Any]:
+    """Refund webhook payload."""
+    return {
+        "transactionType": "refund",
+        "status": "completed",
+        "date": "2025-01-15 10:30:00",
+        "referenceNumber": "REF-REFUND-001",
+        "dailyTransactionID": "12346",
+        "name": "John Doe",
+        "phoneNumber": "7875551234",
+        "email": "john@example.com",
+        "message": "Refund for order #123",
+        "total": "50.00",
+        "tax": "5.00",
+        "subtotal": "45.00",
+        "fee": "0.00",
+        "netAmount": "50.00",
+        "totalRefundedAmount": "50.00",
+        "metadata1": "",
+        "metadata2": "",
+        "items": [],
+    }
+
+
+@pytest.fixture
+def mock_webhook_subscription_response() -> dict[str, Any]:
+    """Successful webhook subscription response."""
+    return {
+        "status": "success",
+        "data": {"message": "Webhook subscription updated successfully"},
+    }
+
+
 def create_mock_transaction(status: TransactionStatus = TransactionStatus.OPEN) -> dict[str, Any]:
     return {
         "status": "success",

@@ -232,6 +232,101 @@ client.update_phone_number(
 client.wait_for_confirmation(payment.data.ecommerce_id)
 ```
 
+## Webhooks
+
+Webhooks provide real-time notifications when transactions occur. Instead of polling for status changes, ATH Movil will POST to your endpoint.
+
+### Subscribing to Webhooks
+
+Register your HTTPS endpoint to receive webhook notifications:
+
+```python
+from athm import ATHMovilClient
+import os
+
+# Private token is required for webhook subscriptions
+client = ATHMovilClient(
+    public_token=os.getenv("ATHM_PUBLIC_TOKEN"),
+    private_token=os.getenv("ATHM_PRIVATE_TOKEN"),
+)
+
+# Subscribe to webhook events
+client.subscribe_webhook(
+    listener_url="https://yoursite.com/webhooks/athm",
+    payment_received=True,
+    refund_sent=True,
+    ecommerce_completed=True,
+    ecommerce_cancelled=True,
+    ecommerce_expired=True,
+)
+```
+
+**Requirements:**
+
+- Listener URL must use HTTPS (no self-signed certificates)
+- Private token is required for subscription
+
+### Handling Webhook Events
+
+When ATH Movil sends a webhook to your endpoint, use `parse_webhook()` to validate and normalize the payload:
+
+```python
+from athm import parse_webhook, WebhookEventType, WebhookStatus, ValidationError
+
+# In your web framework (FastAPI, Flask, Django, etc.)
+@app.post("/webhooks/athm")
+async def handle_athm_webhook(request: Request):
+    try:
+        payload = await request.json()
+        event = parse_webhook(payload)
+
+        match event.transaction_type:
+            case WebhookEventType.PAYMENT:
+                print(f"Payment received: ${event.total} from {event.name}")
+                print(f"Reference: {event.reference_number}")
+
+            case WebhookEventType.REFUND:
+                print(f"Refund sent: ${event.total}")
+
+            case WebhookEventType.ECOMMERCE:
+                if event.status == WebhookStatus.COMPLETED:
+                    print(f"eCommerce order {event.ecommerce_id} completed")
+                elif event.status == WebhookStatus.CANCELLED:
+                    print(f"eCommerce order {event.ecommerce_id} cancelled")
+                elif event.status == WebhookStatus.EXPIRED:
+                    print(f"eCommerce order {event.ecommerce_id} expired")
+
+            case WebhookEventType.DONATION:
+                print(f"Donation received: ${event.total}")
+
+        return {"status": "ok"}
+
+    except ValidationError as e:
+        print(f"Invalid webhook payload: {e}")
+        return {"status": "error"}, 400
+```
+
+### Webhook Event Types
+
+| Event Type | Description |
+|------------|-------------|
+| `SIMULATED` | Test/simulated payment (sandbox) |
+| `PAYMENT` | Standard payment received |
+| `DONATION` | Donation received |
+| `REFUND` | Refund sent to customer |
+| `ECOMMERCE` | eCommerce transaction (check `status` for completed/cancelled/expired) |
+
+### Webhook Payload Normalization
+
+The `parse_webhook()` function automatically normalizes inconsistencies in the ATH Movil webhook API:
+
+- **Field names**: `dailyTransactionID` vs `dailyTransactionId` -> `daily_transaction_id`
+- **Data types**: String decimals (`"100.00"`) and numbers (`100.00`) -> `Decimal`
+- **Status values**: `CANCEL` -> `cancelled`, `COMPLETED` -> `completed`
+- **Transaction types**: `ECOMMERCE` -> `ecommerce`
+
+This means you always get consistent, typed data regardless of which event type you receive.
+
 ## Next Steps
 
 - **[API Reference](api-reference.md)** - Detailed method documentation

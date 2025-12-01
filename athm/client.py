@@ -8,7 +8,15 @@ import httpx
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
-from athm.constants import BASE_URL, DEFAULT_HEADERS, ENDPOINTS, MAX_RETRIES, REQUEST_TIMEOUT
+from athm.constants import (
+    BASE_URL,
+    DEFAULT_HEADERS,
+    ENDPOINTS,
+    MAX_RETRIES,
+    REQUEST_TIMEOUT,
+    WEBHOOK_BASE_URL,
+    WEBHOOK_SUBSCRIBE_ENDPOINT,
+)
 from athm.exceptions import (
     AuthenticationError,
     NetworkError,
@@ -29,6 +37,7 @@ from athm.models import (
     TransactionResponse,
     TransactionStatus,
     UpdatePhoneRequest,
+    WebhookSubscriptionRequest,
 )
 
 
@@ -428,3 +437,86 @@ class ATHMovilClient:
         if self._sync_client:
             self._sync_client.close()
             self._sync_client = None
+
+    def subscribe_webhook(
+        self,
+        listener_url: str,
+        *,
+        payment_received: bool = True,
+        refund_sent: bool = True,
+        donation_received: bool = False,
+        ecommerce_completed: bool = True,
+        ecommerce_cancelled: bool = True,
+        ecommerce_expired: bool = True,
+    ) -> dict[str, Any]:
+        """Subscribe to ATH Movil webhook events.
+
+        Registers a webhook listener URL to receive transaction notifications.
+        Requires private_token to be configured on the client.
+
+        Ref: https://github.com/evertec/athmovil-webhooks#subscribe-via-web-service
+
+        Args:
+            listener_url: HTTPS URL to receive webhook POST requests
+            payment_received: Subscribe to payment notifications (default: True)
+            refund_sent: Subscribe to refund notifications (default: True)
+            donation_received: Subscribe to donation notifications (default: False)
+            ecommerce_completed: Subscribe to eCommerce completed events (default: True)
+            ecommerce_cancelled: Subscribe to eCommerce cancelled events (default: True)
+            ecommerce_expired: Subscribe to eCommerce expired events (default: True)
+
+        Returns:
+            API response dict
+
+        Raises:
+            AuthenticationError: If private_token not configured
+            ValidationError: If listener_url is invalid
+            ATHMovilError: On API errors
+
+        Example:
+            ```python
+            client = ATHMovilClient(
+                public_token="your_public_token",
+                private_token="your_private_token",
+            )
+
+            client.subscribe_webhook(
+                listener_url="https://yoursite.com/webhooks/athm",
+                payment_received=True,
+                refund_sent=True,
+            )
+            ```
+        """
+        if not self.private_token:
+            raise AuthenticationError("private_token is required to subscribe to webhooks")
+
+        try:
+            request = WebhookSubscriptionRequest(
+                public_token=self.public_token,
+                private_token=self.private_token,
+                listener_url=listener_url,
+                payment_received_event=payment_received,
+                refund_sent_event=refund_sent,
+                donation_received_event=donation_received,
+                ecommerce_payment_received_event=ecommerce_completed,
+                ecommerce_payment_cancelled_event=ecommerce_cancelled,
+                ecommerce_payment_expired_event=ecommerce_expired,
+            )
+        except PydanticValidationError as e:
+            raise ValidationError(str(e)) from e
+
+        # Webhook subscription uses a different base URL than the payment API
+        url = f"{WEBHOOK_BASE_URL}{WEBHOOK_SUBSCRIBE_ENDPOINT}"
+
+        try:
+            response = httpx.post(
+                url,
+                json=request.model_dump(by_alias=True),
+                headers=DEFAULT_HEADERS,
+                timeout=self.timeout,
+            )
+            return self._handle_response(response)
+        except httpx.TimeoutException as e:
+            raise TimeoutError(f"Webhook subscription request timed out: {e}") from e
+        except httpx.HTTPError as e:
+            raise NetworkError(f"HTTP error during webhook subscription: {e}") from e

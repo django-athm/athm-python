@@ -14,9 +14,7 @@ git commit -m "docs: update readme"      # Documentation
 
 ```bash
 # 1. Update version (from main branch)
-cz bump --patch    # Bug fixes (0.2.0 → 0.2.1)
-cz bump --minor    # New features (0.2.0 → 0.3.0)
-cz bump --major    # Breaking changes (0.2.0 → 1.0.0)
+cz bump
 
 # 2. Push to GitHub
 git push && git push --tags

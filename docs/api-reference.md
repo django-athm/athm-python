@@ -220,6 +220,178 @@ Always call this when done, or use the context manager pattern.
 
 ---
 
+#### subscribe_webhook()
+
+Subscribe to ATH Movil webhook notifications.
+
+```python
+client.subscribe_webhook(
+    listener_url="https://yoursite.com/webhooks/athm",
+    payment_received=True,      # Default: True
+    refund_sent=True,           # Default: True
+    donation_received=False,    # Default: False
+    ecommerce_completed=True,   # Default: True
+    ecommerce_cancelled=True,   # Default: True
+    ecommerce_expired=True      # Default: True
+)
+```
+
+**Parameters:**
+
+- `listener_url` (str): HTTPS URL to receive webhook POST requests
+- `payment_received` (bool): Subscribe to payment notifications
+- `refund_sent` (bool): Subscribe to refund notifications
+- `donation_received` (bool): Subscribe to donation notifications
+- `ecommerce_completed` (bool): Subscribe to eCommerce completed events
+- `ecommerce_cancelled` (bool): Subscribe to eCommerce cancelled events
+- `ecommerce_expired` (bool): Subscribe to eCommerce expired events
+
+**Returns:** API response dict
+
+**Raises:** `AuthenticationError` (if no private_token), `ValidationError` (if URL not HTTPS)
+
+**Requirements:**
+
+- Private token must be configured on the client
+- Listener URL must use HTTPS (self-signed certificates rejected)
+
+---
+
+## Webhook Functions
+
+### parse_webhook()
+
+Parse and validate an incoming webhook payload.
+
+```python
+from athm import parse_webhook, WebhookEventType
+
+payload = await request.json()  # From your web framework
+event = parse_webhook(payload)
+
+print(event.transaction_type)  # WebhookEventType.PAYMENT
+print(event.status)            # WebhookStatus.COMPLETED
+print(event.total)             # Decimal("100.00")
+print(event.reference_number)  # "REF-2025-001234"
+```
+
+**Parameters:**
+
+- `payload` (dict): Raw JSON payload from webhook request body
+
+**Returns:** `WebhookPayload` - validated and normalized webhook data
+
+**Raises:** `ValidationError` if payload is invalid
+
+**Normalization:**
+
+The function automatically normalizes API inconsistencies:
+
+- Field names: `dailyTransactionID` / `dailyTransactionId` -> `daily_transaction_id`
+- Data types: String and number amounts -> `Decimal`
+- Status values: `CANCEL` -> `cancelled`, `COMPLETED` -> `completed`
+- Transaction types: `ECOMMERCE` -> `ecommerce`
+
+---
+
+## Webhook Models
+
+### WebhookEventType
+
+Enum of webhook event types.
+
+```python
+from athm import WebhookEventType
+
+WebhookEventType.SIMULATED  # Test/simulated payment
+WebhookEventType.PAYMENT    # Standard payment received
+WebhookEventType.DONATION   # Donation received
+WebhookEventType.REFUND     # Refund sent
+WebhookEventType.ECOMMERCE  # eCommerce transaction
+```
+
+---
+
+### WebhookStatus
+
+Enum of webhook status values.
+
+```python
+from athm import WebhookStatus
+
+WebhookStatus.COMPLETED   # Transaction completed
+WebhookStatus.CANCELLED   # Transaction cancelled
+WebhookStatus.EXPIRED     # Transaction expired
+```
+
+---
+
+### WebhookPayload
+
+Normalized webhook payload model.
+
+```python
+from athm import parse_webhook
+
+event = parse_webhook(payload)
+
+# Transaction identification
+event.transaction_type      # WebhookEventType
+event.status                # WebhookStatus
+event.reference_number      # str | None
+event.daily_transaction_id  # str | None
+
+# Timestamps
+event.date                  # datetime
+event.transaction_date      # datetime | None (eCommerce only)
+
+# Customer info
+event.name                  # str | None
+event.phone_number          # str | None
+event.email                 # str | None
+event.message               # str | None
+
+# Amounts (all Decimal)
+event.total                 # Decimal
+event.tax                   # Decimal | None
+event.subtotal              # Decimal | None
+event.fee                   # Decimal | None
+event.net_amount            # Decimal | None
+event.total_refunded_amount # Decimal | None
+
+# Metadata
+event.metadata1             # str | None
+event.metadata2             # str | None
+event.items                 # list[WebhookItem]
+
+# eCommerce-specific
+event.ecommerce_id          # str | None
+event.business_name         # str | None
+event.is_non_profit         # bool | None
+event.reference_transaction_id  # str | None
+```
+
+---
+
+### WebhookItem
+
+Item in a webhook payload.
+
+```python
+item = event.items[0]
+
+item.name           # str
+item.description    # str
+item.price          # Decimal
+item.quantity       # int
+item.tax            # Decimal | None
+item.metadata       # str | None
+item.sku            # str | None
+item.formatted_price  # str | None
+```
+
+---
+
 ## Models
 
 ### PaymentRequest

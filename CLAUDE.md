@@ -105,6 +105,15 @@ uv run mkdocs build
 - Base URL, endpoints, and headers
 - Error code sets for classification
 - Business rules (MIN_AMOUNT=$1.00, MAX_AMOUNT=$1500.00, MIN_TIMEOUT=120s)
+- Webhook endpoint configuration (different base URL: `www.athmovil.com`)
+
+**`athm/webhooks.py`** - Webhook models and utilities:
+- `WebhookEventType` enum: simulated, payment, donation, refund, ecommerce
+- `WebhookStatus` enum: completed, cancelled, expired
+- `WebhookPayload` model: normalized webhook payload with validators
+- `WebhookSubscriptionRequest` model: for subscribing to webhooks
+- `parse_webhook()` function: parses and validates incoming webhook payloads
+- Normalizes API inconsistencies (field names, data types, casing)
 
 ### Payment Flow
 
@@ -116,12 +125,24 @@ The typical payment flow involves multiple sequential steps:
 
 The client stores auth tokens internally keyed by `ecommerce_id`, so you don't need to manually track them between create and authorize calls.
 
+### Webhook Flow
+
+Webhooks provide real-time notifications for transaction events:
+
+1. **Subscribe** → Call `subscribe_webhook()` with your HTTPS listener URL
+2. **Receive** → ATH Movil sends POST requests to your endpoint
+3. **Parse** → Use `parse_webhook()` to validate and normalize the payload
+4. **Process** → Handle based on `transaction_type` and `status`
+
+Webhook documentation: https://github.com/evertec/athmovil-webhooks
+
 ### Key Design Patterns
 
 - **Automatic Retries**: Network errors and timeouts automatically retry up to `max_retries` (default: 3) with exponential backoff
 - **Context Manager**: Use `with ATHMovilClient(...) as client:` for automatic cleanup
 - **Lazy Client Init**: The httpx.Client is only created when first needed (via `sync_client` property)
 - **Token Storage**: Auth tokens are stored in `_auth_tokens` dict after create_payment, retrieved automatically in authorize_payment
+- **Webhook Normalization**: The `WebhookPayload` model normalizes API inconsistencies (field names, data types, casing) via Pydantic validators
 
 ### Type Safety
 
@@ -186,7 +207,8 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 - Maximum metadata length: 40 characters
 - Maximum refund message length: 50 characters
 - Phone numbers: Must be 10 digits (Puerto Rico format)
-- Private token required only for refunds
+- Private token required for refunds and webhook subscriptions
+- Webhook listener URL must use HTTPS (no self-signed certificates)
 
 ## Version Bumps and Releases
 

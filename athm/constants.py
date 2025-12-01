@@ -33,6 +33,11 @@ class ErrorCode(str, Enum):
 BASE_URL = "https://payments.athmovil.com"
 API_VERSION = "v1"
 
+# Webhook subscription uses a different base URL
+# Ref: https://github.com/evertec/athmovil-webhooks?tab=readme-ov-file#using-a-web-service
+WEBHOOK_BASE_URL = "https://www.athmovil.com"
+WEBHOOK_SUBSCRIBE_ENDPOINT = "/transactions/webhook/post"
+
 ENDPOINTS = {
     "payment": "/api/business-transaction/ecommerce/payment",
     "find_payment": "/api/business-transaction/ecommerce/business/findPayment",

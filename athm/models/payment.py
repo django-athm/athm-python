@@ -1,18 +1,13 @@
-"""Pydantic models for ATH Móvil API data structures."""
+"""Pydantic models for ATH Movil payment API data structures."""
 
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Annotated, Any
 
-from pydantic import (
-    BaseModel,
-    BeforeValidator,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import BeforeValidator, Field, field_validator, model_validator
+
+from athm.models.base import ATHMovilBaseModel
 
 # Shared constants
 PHONE_NUMBER_PATTERN = r"^\d{10}$"
@@ -49,12 +44,6 @@ def _validate_decimal(
 
 # Reusable type for daily transaction ID (handles int-to-str conversion)
 DailyTransactionId = Annotated[str | None, BeforeValidator(_to_str)]
-
-
-class ATHMovilBaseModel(BaseModel):
-    """Base model with common configuration for ATH Movil API models."""
-
-    model_config = ConfigDict(populate_by_name=True)
 
 
 class TransactionStatus(str, Enum):
