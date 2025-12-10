@@ -1,6 +1,11 @@
 """Custom exceptions for ATH Móvil API errors."""
 
-from typing import Any
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pydantic import ValidationError as PydanticValidationError
 
 from athm.constants import (
     AUTH_ERROR_CODES,
@@ -8,6 +13,15 @@ from athm.constants import (
     VALIDATION_ERROR_CODES,
     ErrorCode,
 )
+
+
+@dataclass
+class FieldError:
+    """Single field validation error."""
+
+    field: str
+    message: str
+    value: Any = dataclass_field(default=None)
 
 
 class ATHMovilError(Exception):
@@ -44,7 +58,62 @@ class AuthenticationError(ATHMovilError):
 class ValidationError(ATHMovilError):
     """Raised when request validation fails."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        errors: list[FieldError] | None = None,
+        error_code: str | None = None,
+        status_code: int | None = None,
+        response_data: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize validation error.
+
+        Args:
+            message: Error message
+            errors: List of field-level validation errors
+            error_code: ATH Móvil API error code
+            status_code: HTTP status code
+            response_data: Full API response data
+        """
+        super().__init__(message, error_code, status_code, response_data)
+        self.errors = errors or []
+
+    @classmethod
+    def from_pydantic(
+        cls, exc: "PydanticValidationError", context: str = "request"
+    ) -> "ValidationError":
+        """Transform Pydantic ValidationError into clean domain error.
+
+        Args:
+            exc: Pydantic validation error
+            context: Description of what was being validated (e.g., "payment request")
+
+        Returns:
+            ValidationError with clean, user-friendly messages
+        """
+        field_errors: list[FieldError] = []
+        for error in exc.errors():
+            loc = error.get("loc", ())
+            field_name = ".".join(str(x) for x in loc) if loc else "unknown"
+            msg_value = error.get("msg", "Invalid value")
+            msg = str(msg_value) if msg_value else "Invalid value"
+            # Clean up Pydantic message artifacts
+            msg = msg.replace("Value error, ", "")
+            field_errors.append(
+                FieldError(
+                    field=field_name,
+                    message=msg,
+                    value=error.get("input"),
+                )
+            )
+
+        # Build clean summary message
+        summary = f"Invalid {context}"
+        if field_errors:
+            details = "; ".join(f"{e.field}: {e.message}" for e in field_errors)
+            summary = f"{summary}: {details}"
+
+        return cls(message=summary, errors=field_errors)
 
 
 class TransactionError(ATHMovilError):
@@ -81,35 +150,80 @@ def create_exception_from_response(
     response_data: dict[str, Any], status_code: int
 ) -> ATHMovilError:
     """Create appropriate exception from API response."""
-    message = response_data.get("message", "Unknown error")
-    error_code = response_data.get("errorcode")
-
-    kwargs = {
-        "message": message,
-        "error_code": error_code,
-        "status_code": status_code,
-        "response_data": response_data,
-    }
+    message_value = response_data.get("message")
+    message: str = message_value if isinstance(message_value, str) else "Unknown error"
+    error_code_value = response_data.get("errorcode")
+    error_code: str | None = error_code_value if isinstance(error_code_value, str) else None
 
     if error_code:
         if error_code in AUTH_ERROR_CODES:
-            return AuthenticationError(**kwargs)
+            return AuthenticationError(
+                message=message,
+                error_code=error_code,
+                status_code=status_code,
+                response_data=response_data,
+            )
         if error_code in VALIDATION_ERROR_CODES:
-            return ValidationError(**kwargs)
+            return ValidationError(
+                message=message,
+                error_code=error_code,
+                status_code=status_code,
+                response_data=response_data,
+            )
         if error_code in TRANSACTION_ERROR_CODES:
-            return TransactionError(**kwargs)
+            return TransactionError(
+                message=message,
+                error_code=error_code,
+                status_code=status_code,
+                response_data=response_data,
+            )
         if error_code == ErrorCode.BTRA_9998.value:
-            return NetworkError(**kwargs)
+            return NetworkError(
+                message=message,
+                error_code=error_code,
+                status_code=status_code,
+                response_data=response_data,
+            )
         if error_code == ErrorCode.BTRA_9999.value:
-            return InternalServerError(**kwargs)
+            return InternalServerError(
+                message=message,
+                error_code=error_code,
+                status_code=status_code,
+                response_data=response_data,
+            )
 
     if status_code == 401:
-        return AuthenticationError(**kwargs)
+        return AuthenticationError(
+            message=message,
+            error_code=error_code,
+            status_code=status_code,
+            response_data=response_data,
+        )
     if status_code == 400:
-        return ValidationError(**kwargs)
+        return ValidationError(
+            message=message,
+            error_code=error_code,
+            status_code=status_code,
+            response_data=response_data,
+        )
     if status_code == 429:
-        return RateLimitError(**kwargs)
+        return RateLimitError(
+            message=message,
+            error_code=error_code,
+            status_code=status_code,
+            response_data=response_data,
+        )
     if status_code >= 500:
-        return InternalServerError(**kwargs)
+        return InternalServerError(
+            message=message,
+            error_code=error_code,
+            status_code=status_code,
+            response_data=response_data,
+        )
 
-    return ATHMovilError(**kwargs)
+    return ATHMovilError(
+        message=message,
+        error_code=error_code,
+        status_code=status_code,
+        response_data=response_data,
+    )

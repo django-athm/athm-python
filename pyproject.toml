@@ -204,4 +204,19 @@ tag_format = "v$version"
 update_changelog_on_bump = true
 changelog_file = "CHANGELOG.md"
 
+[dependency-groups]
+dev = [
+    "pyright>=1.1.407",
+]
+
+# Pyright configuration
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingTypeStubs = false
+# Disable reportCallIssue for Pydantic models with populate_by_name=True
+# mypy with pydantic.mypy plugin handles these correctly
+reportCallIssue = false
+
 # git-cliff configuration

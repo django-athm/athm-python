@@ -116,7 +116,7 @@ class WebhookPayload(ATHMovilBaseModel):
     # Metadata
     metadata1: str | None = None
     metadata2: str | None = None
-    items: list[WebhookItem] = Field(default_factory=list)
+    items: list[WebhookItem] = Field(default_factory=lambda: [])
 
     # eCommerce-specific fields
     ecommerce_id: str | None = Field(None, alias="ecommerceId")
@@ -158,7 +158,7 @@ class WebhookPayload(ATHMovilBaseModel):
 
     @field_validator("transaction_type", mode="before")
     @classmethod
-    def normalize_transaction_type(cls, v: str) -> str:
+    def normalize_transaction_type(cls, v: object) -> str:
         """Normalize transaction type to lowercase.
 
         The API returns "ECOMMERCE" for completed/cancelled events
@@ -166,11 +166,13 @@ class WebhookPayload(ATHMovilBaseModel):
 
         Ref: https://github.com/evertec/athmovil-webhooks#event-types
         """
-        return v.lower() if isinstance(v, str) else v
+        if isinstance(v, str):
+            return v.lower()
+        return str(v).lower()
 
     @field_validator("status", mode="before")
     @classmethod
-    def normalize_status(cls, v: str) -> str:
+    def normalize_status(cls, v: object) -> str:
         """Normalize status values.
 
         The API returns:
@@ -183,11 +185,10 @@ class WebhookPayload(ATHMovilBaseModel):
 
         Ref: https://github.com/evertec/athmovil-webhooks#event-types
         """
-        if isinstance(v, str):
-            v = v.lower()
-            if v == "cancel":
-                return "cancelled"
-        return v
+        status = str(v).lower() if v else ""
+        if status == "cancel":
+            return "cancelled"
+        return status
 
     @field_validator(
         "total", "tax", "subtotal", "fee", "net_amount", "total_refunded_amount", mode="before"
@@ -216,8 +217,21 @@ class WebhookPayload(ATHMovilBaseModel):
             return None
         if isinstance(v, datetime):
             return v
+
+        # Normalize fractional seconds to 6 digits for %f compatibility
+        # ATH Movil sends variable-length fractions like ".0", ".00", etc.
+        if "." in v:
+            base, frac = v.rsplit(".", 1)
+            if frac.isdigit():
+                v = f"{base}.{frac.ljust(6, '0')}"
+
         # Try common formats from ATH Movil webhooks
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
+        for fmt in (
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M:%S.%f",
+        ):
             try:
                 return datetime.strptime(v, fmt)
             except ValueError:

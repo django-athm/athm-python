@@ -1,9 +1,12 @@
 """Unit tests for exception handling."""
 
+from pydantic import BaseModel, field_validator
+
 from athm.constants import ErrorCode
 from athm.exceptions import (
     ATHMovilError,
     AuthenticationError,
+    FieldError,
     InternalServerError,
     NetworkError,
     RateLimitError,
@@ -84,6 +87,118 @@ class TestSpecificExceptions:
     def test_internal_server_error(self):
         error = InternalServerError("Server error")
         assert isinstance(error, ATHMovilError)
+
+
+class TestFieldError:
+    def test_field_error_creation(self):
+        error = FieldError(field="total", message="Must be at least $1.00")
+        assert error.field == "total"
+        assert error.message == "Must be at least $1.00"
+        assert error.value is None
+
+    def test_field_error_with_value(self):
+        error = FieldError(field="amount", message="Invalid value", value="0.50")
+        assert error.field == "amount"
+        assert error.message == "Invalid value"
+        assert error.value == "0.50"
+
+
+class TestValidationErrorFromPydantic:
+    """Tests for ValidationError.from_pydantic() classmethod."""
+
+    def test_from_pydantic_single_error(self):
+        class TestModel(BaseModel):
+            amount: float
+
+            @field_validator("amount")
+            @classmethod
+            def validate_amount(cls, v: float) -> float:
+                if v < 1.0:
+                    raise ValueError("Amount must be at least $1.00")
+                return v
+
+        try:
+            TestModel(amount=0.50)
+        except Exception as pydantic_exc:
+            error = ValidationError.from_pydantic(pydantic_exc, context="payment")
+            assert "Invalid payment" in error.message
+            assert "amount: Amount must be at least $1.00" in error.message
+            assert len(error.errors) == 1
+            assert error.errors[0].field == "amount"
+            assert error.errors[0].message == "Amount must be at least $1.00"
+            assert error.errors[0].value == 0.50
+
+    def test_from_pydantic_multiple_errors(self):
+        class TestModel(BaseModel):
+            name: str
+            age: int
+
+        try:
+            TestModel(name=123, age="not a number")  # type: ignore[arg-type]
+        except Exception as pydantic_exc:
+            error = ValidationError.from_pydantic(pydantic_exc, context="user data")
+            assert "Invalid user data" in error.message
+            assert len(error.errors) == 2
+
+    def test_from_pydantic_no_pydantic_leakage(self):
+        class TestModel(BaseModel):
+            value: int
+
+        try:
+            TestModel(value="not a number")  # type: ignore[arg-type]
+        except Exception as pydantic_exc:
+            error = ValidationError.from_pydantic(pydantic_exc, context="test")
+            # Should not contain pydantic references
+            assert "pydantic" not in error.message.lower()
+            assert "errors.pydantic.dev" not in error.message
+
+    def test_from_pydantic_cleans_value_error_prefix(self):
+        class TestModel(BaseModel):
+            field: str
+
+            @field_validator("field")
+            @classmethod
+            def validate_field(cls, v: str) -> str:
+                raise ValueError("Custom error message")
+
+        try:
+            TestModel(field="test")
+        except Exception as pydantic_exc:
+            error = ValidationError.from_pydantic(pydantic_exc, context="test")
+            # Should not have "Value error, " prefix
+            assert "Value error, " not in error.errors[0].message
+            assert error.errors[0].message == "Custom error message"
+
+    def test_from_pydantic_nested_field_location(self):
+        class Inner(BaseModel):
+            value: int
+
+        class Outer(BaseModel):
+            inner: Inner
+
+        try:
+            Outer(inner={"value": "not a number"})  # type: ignore[arg-type]
+        except Exception as pydantic_exc:
+            error = ValidationError.from_pydantic(pydantic_exc, context="nested")
+            assert len(error.errors) == 1
+            # Field should include full path
+            assert error.errors[0].field == "inner.value"
+
+    def test_validation_error_with_errors_attribute(self):
+        error = ValidationError(
+            message="Test error",
+            errors=[
+                FieldError(field="a", message="Error A"),
+                FieldError(field="b", message="Error B"),
+            ],
+        )
+        assert len(error.errors) == 2
+        assert error.errors[0].field == "a"
+        assert error.errors[1].field == "b"
+
+    def test_validation_error_default_empty_errors(self):
+        error = ValidationError(message="Simple error")
+        assert error.errors == []
 
 
 class TestCreateExceptionFromResponse:

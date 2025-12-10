@@ -249,6 +249,86 @@ class TestParseWebhook:
                 price="not-a-number",
             )
 
+    def test_parse_simulated_webhook_payload(self):
+        """Parse actual simulated webhook payload from ATH Movil API."""
+        payload = {
+            "fee": "0.06",
+            "tax": "1.00",
+            "date": "2020-01-01 12:00:00.0",
+            "name": "Valeria Herrero",
+            "email": "email@example.com",
+            "items": [
+                {
+                    "tax": "1.00",
+                    "name": "First Item",
+                    "price": "0.00",
+                    "metadata": "metadata test",
+                    "quantity": "1",
+                    "description": "This is a description.",
+                },
+                {
+                    "tax": "1.00",
+                    "name": "Second Item",
+                    "price": "1.00",
+                    "metadata": "metadata test",
+                    "quantity": "1",
+                    "description": "This is another description.",
+                },
+            ],
+            "total": "3.00",
+            "status": "completed",
+            "message": "This is a message.",
+            "subtotal": "2.00",
+            "metadata1": "This is metadata1",
+            "metadata2": "This is metadata2",
+            "netAmount": "0.94",
+            "phoneNumber": "7871234567",
+            "referenceNumber": "000000-00000000abcd",
+            "transactionType": "simulated",
+            "dailyTransactionID": "0001",
+            "totalRefundedAmount": "0.00",
+        }
+        event = parse_webhook(payload)
+
+        assert event.transaction_type == WebhookEventType.SIMULATED
+        assert event.status == WebhookStatus.COMPLETED
+        assert event.date.year == 2020
+        assert event.date.month == 1
+        assert event.date.day == 1
+        assert event.total == Decimal("3.00")
+        assert event.fee == Decimal("0.06")
+        assert event.net_amount == Decimal("0.94")
+        assert len(event.items) == 2
+        assert event.items[0].name == "First Item"
+        assert event.items[0].price == Decimal("0.00")
+        assert event.items[1].name == "Second Item"
+        assert event.items[1].price == Decimal("1.00")
+
+    def test_parse_datetime_fractional_seconds_variants(self):
+        """Test datetime parsing with various fractional second formats."""
+        base_payload = {
+            "transactionType": "payment",
+            "status": "completed",
+            "total": "10.00",
+        }
+
+        # Single digit fractional
+        event1 = parse_webhook({**base_payload, "date": "2020-01-01 12:00:00.0"})
+        assert event1.date.year == 2020
+        assert event1.date.microsecond == 0
+
+        # Two digit fractional
+        event2 = parse_webhook({**base_payload, "date": "2020-01-01 12:00:00.12"})
+        assert event2.date.microsecond == 120000
+
+        # Full 6-digit fractional
+        event3 = parse_webhook({**base_payload, "date": "2020-01-01 12:00:00.123456"})
+        assert event3.date.microsecond == 123456
+
+        # ISO format with fractional (T separator)
+        event4 = parse_webhook({**base_payload, "date": "2020-01-01T12:00:00.5"})
+        assert event4.date.microsecond == 500000
+
 
 class TestWebhookSubscriptionRequest:
     def test_https_required(self):

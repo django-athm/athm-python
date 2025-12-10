@@ -7,6 +7,7 @@ from athm.client import ATHMovilClient
 from athm.exceptions import (
     ATHMovilError,
     AuthenticationError,
+    FieldError,
     InternalServerError,
     NetworkError,
     RateLimitError,
@@ -41,6 +42,7 @@ __all__ = [
     "ATHMovilClient",
     "ATHMovilError",
     "AuthenticationError",
+    "FieldError",
     "InternalServerError",
     "NetworkError",
     "PaymentItem",

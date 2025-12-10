@@ -198,7 +198,7 @@ class ATHMovilClient:
                 **kwargs,
             )
         except PydanticValidationError as e:
-            raise ValidationError(str(e)) from e
+            raise ValidationError.from_pydantic(e, context="payment request") from e
 
         response = self._make_request(
             "POST",
@@ -302,7 +302,7 @@ class ATHMovilClient:
                 phone_number=phone_number,
             )
         except PydanticValidationError as e:
-            raise ValidationError(str(e)) from e
+            raise ValidationError.from_pydantic(e, context="phone number") from e
 
         headers = self._prepare_headers(auth_token=token)
 
@@ -375,7 +375,7 @@ class ATHMovilClient:
                 message=message,
             )
         except PydanticValidationError as e:
-            raise ValidationError(str(e)) from e
+            raise ValidationError.from_pydantic(e, context="refund request") from e
 
         response = self._make_request(
             "POST",
@@ -503,7 +503,7 @@ class ATHMovilClient:
                 ecommerce_payment_expired_event=ecommerce_expired,
             )
         except PydanticValidationError as e:
-            raise ValidationError(str(e)) from e
+            raise ValidationError.from_pydantic(e, context="webhook subscription") from e
 
         # Webhook subscription uses a different base URL than the payment API
         url = f"{WEBHOOK_BASE_URL}{WEBHOOK_SUBSCRIBE_ENDPOINT}"
