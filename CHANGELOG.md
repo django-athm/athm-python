@@ -12,6 +12,12 @@ _Initial release - see Unreleased section above for features_
 [0.1.0]: https://github.com/django-athm/athm-python/releases/tag/v0.1.0
 
 
+## v0.4.1 (2025-12-10)
+
+### Refactor
+
+- **exceptions**: improve ValidationError with structured field errors
+
 ## v0.4.0 (2025-12-01)
 
 ### Feat
